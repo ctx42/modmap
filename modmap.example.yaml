@@ -1,0 +1,78 @@
+# modmap configuration file — documented example.
+#
+# Copy this file next to your project, edit the maps, and generate them with
+#
+#   modmap -c modmap.yaml            # every map declared below
+#   modmap -c modmap.yaml ctx42      # only the map named ctx42
+#   modmap -c modmap.yaml ctx42 all  # two of them, in the order given
+#
+# Naming a map which is not declared here fails and lists the names that are.
+#
+# When this file is used it is the only source of directories, filters, and
+# output paths: the --include, --exclude, and -o options cannot be combined
+# with -c. The one-off form takes them instead and declares nothing:
+#
+#   modmap --include 'github.com/you/*' -o tmp/map.svg ~/src
+#
+# Every relative path below is resolved against the directory holding this
+# file, never against the current working directory, so a map generates the
+# same files whatever directory you run it from. Paths are otherwise used as
+# written: a leading "~" is not expanded, so spell the home directory out.
+
+maps:
+    # A map of one workspace, filtered to the modules you own. This is the
+    # shape you want almost always: the filter keeps the picture readable and
+    # keeps the run cheap.
+  - name: ctx42
+
+    # Directories scanned for Go modules. Every go.mod file found below them
+    # is a module, nested ones included, but the .git, testdata, and vendor
+    # directories are never descended into. At least one directory is
+    # required, and a map may list several.
+    dirs:
+      - /home/you/src/ctx42
+
+    # Module path globs deciding which modules take part in the map. A module
+    # matching none of them is never fetched and never drawn, so the globs
+    # decide how much work a run does as much as what it shows. Leaving the
+    # list out draws the whole dependency closure, third-party modules
+    # included — see the "everything" map below for what that costs. The "*"
+    # wildcard does not cross a "/" separator, so "github.com/ctx42/*" covers
+    # github.com/ctx42/testing but not github.com/ctx42/x/y.
+    include:
+      - github.com/ctx42/*
+
+    # Module path globs removing modules from the map. A module matching both
+    # lists is removed: exclude wins. Optional; leave it out to keep
+    # everything the include globs matched.
+    exclude:
+      - github.com/ctx42/tst-*
+
+    # The SVG file this map is written to. Required, and an existing file is
+    # overwritten.
+    out: tmp/ctx42-modules.svg
+
+    # A map spanning more than one checkout directory. Modules found on disk
+    # are read from disk whatever version other modules ask for, so a map
+    # like this shows the code you are actually working on.
+  - name: work
+    dirs:
+      - /home/you/src/ctx42
+      - /home/you/src/customer/backend
+    include:
+      - github.com/ctx42/*
+      - github.com/customer/*
+    out: tmp/work-modules.svg
+
+    # A map with no filters: every module in the dependency closure, drawn.
+    # Expect it to be slow on the first run, because the go.mod file of every
+    # module the closure reaches has to come from the module cache or, when
+    # the cache misses, from the network. Expect it to be wide, too: modmap
+    # asks before rendering a level holding more than 20 modules, and --yes
+    # skips that question for unattended runs. A dependency cycle anywhere in
+    # the closure is fatal and no file is written — real cycles do exist
+    # among third-party modules, so an unfiltered map may simply refuse.
+  - name: everything
+    dirs:
+      - /home/you/src/ctx42
+    out: tmp/everything.svg

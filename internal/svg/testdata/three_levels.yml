@@ -1,0 +1,40 @@
+bodyType: text
+body: |
+  <svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 1526.1875 1775" width="1526.1875" height="1775">
+  <defs><style>
+  @font-face{font-family:"Modmap Sans";src:url(data:font/ttf;base64,FONT) format("truetype");}
+  text{font-family:"Modmap Sans",sans-serif;}
+  .module{transition:opacity .15s ease-out;cursor:pointer;}
+  .module rect{pointer-events:all;}
+  .module:focus{outline:none;}
+  .module:focus rect{stroke-dasharray:none;}
+  svg:has(.module:hover) .module,svg:has(.module:focus) .module{opacity:0.12;}
+  svg:not(:has(.module:focus)):has(#m0:hover) #m0,svg:not(:has(.module:focus)):has(#m0:hover) .rm0,svg:has(#m0:focus) #m0,svg:has(#m0:focus) .rm0{opacity:1;}
+  svg:not(:has(.module:focus)):has(#m1:hover) #m1,svg:not(:has(.module:focus)):has(#m1:hover) .rm1,svg:has(#m1:focus) #m1,svg:has(#m1:focus) .rm1{opacity:1;}
+  svg:not(:has(.module:focus)):has(#m2:hover) #m2,svg:not(:has(.module:focus)):has(#m2:hover) .rm2,svg:has(#m2:focus) #m2,svg:has(#m2:focus) .rm2{opacity:1;}
+  svg:not(:has(.module:focus)):has(#m3:hover) #m3,svg:not(:has(.module:focus)):has(#m3:hover) .rm3,svg:has(#m3:focus) #m3,svg:has(#m3:focus) .rm3{opacity:1;}
+  </style></defs>
+  <rect x="0" y="0" width="1526.1875" height="1775" fill="#121212"/>
+  <line x1="108" y1="1745.5" x2="1418.1875" y2="1745.5" stroke="#154162" stroke-width="2.5" stroke-dasharray="8 10"/>
+  <text x="108" y="1459.5" transform="rotate(-90 108 1459.5)" fill="#b86200" font-size="96" text-anchor="middle">LEVEL 0</text>
+  <line x1="108" y1="1173.5" x2="1418.1875" y2="1173.5" stroke="#154162" stroke-width="2.5" stroke-dasharray="8 10"/>
+  <text x="108" y="887.5" transform="rotate(-90 108 887.5)" fill="#b86200" font-size="96" text-anchor="middle">LEVEL 1</text>
+  <line x1="108" y1="601.5" x2="1418.1875" y2="601.5" stroke="#154162" stroke-width="2.5" stroke-dasharray="8 10"/>
+  <text x="108" y="315.5" transform="rotate(-90 108 315.5)" fill="#b86200" font-size="96" text-anchor="middle">LEVEL 2</text>
+  <g id="m0" class="module rm2 rm3" tabindex="0" data-module="example.com/core" data-level="0" data-dependents="example.com/app example.com/lib">
+  <rect x="216" y="1344" width="417.09375" height="231" rx="32" fill="none" stroke="#d3d3d3" stroke-width="2.5" stroke-dasharray="8 10"/>
+  <text x="424.546875" y="1472.5078125" fill="#d3d3d3" font-size="36" text-anchor="middle">example.com/core</text>
+  </g>
+  <g id="m1" class="module" tabindex="0" data-module="example.com/tool" data-level="0" data-dependents="">
+  <rect x="893.09375" y="1344" width="417.09375" height="231" rx="32" fill="none" stroke="#d3d3d3" stroke-width="2.5" stroke-dasharray="8 10"/>
+  <text x="1101.640625" y="1472.5078125" fill="#d3d3d3" font-size="36" text-anchor="middle">example.com/tool</text>
+  </g>
+  <g id="m2" class="module rm0 rm3" tabindex="0" data-module="example.com/lib" data-level="1" data-dependents="example.com/app">
+  <rect x="216" y="772" width="417.09375" height="231" rx="32" fill="none" stroke="#d3d3d3" stroke-width="2.5" stroke-dasharray="8 10"/>
+  <text x="424.546875" y="900.5078125" fill="#d3d3d3" font-size="36" text-anchor="middle">example.com/lib</text>
+  </g>
+  <g id="m3" class="module rm0 rm2" tabindex="0" data-module="example.com/app" data-level="2" data-dependents="">
+  <rect x="216" y="200" width="417.09375" height="231" rx="32" fill="none" stroke="#d3d3d3" stroke-width="2.5" stroke-dasharray="8 10"/>
+  <text x="424.546875" y="328.5078125" fill="#d3d3d3" font-size="36" text-anchor="middle">example.com/app</text>
+  </g>
+  </svg>
