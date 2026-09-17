@@ -163,3 +163,7 @@ line are not.
 |----------------------------|-------------------------------------------|
 | [pkg/mod](pkg/mod)         | find modules, read and resolve `go.mod`   |
 | [pkg/graph](pkg/graph)     | levels, cycle detection, dependent sets   |
+
+## License
+
+Released under the MIT License — see [LICENSE.md](LICENSE.md).
