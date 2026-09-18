@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 // Package cli implements the modmap command line interface: option parsing,
-// run configuration, and the top level dispatch returning the exit code.
+// run configuration, and the top level dispatch returning the exit code. A
+// run either writes every map it is asked for or serves a single one.
 package cli
 
 import "errors"

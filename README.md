@@ -98,7 +98,8 @@ pinned, but it reads 2 when `xdef` is pinned and 3 when `testing` is:
 the level counts from the bottom of the whole map, the digit counts
 from the module you pinned.
 
-`-o` is required: `modmap` never writes an SVG to a terminal.
+`-o` is required unless the map is served with `--web`: `modmap`
+never writes an SVG to a terminal.
 
 ### Filtering
 

@@ -14,6 +14,18 @@
 #
 #   modmap --include 'github.com/you/*' -o tmp/map.svg ~/src
 #
+# The --web option is the exception, because it decides where a map goes
+# rather than what it holds. It serves one map in a browser instead of
+# writing it, so exactly one map has to be named:
+#
+#   modmap --web -c modmap.yaml ctx42       # a free port on the loopback
+#   modmap --web=:8080 -c modmap.yaml ctx42 # every interface, port 8080
+#
+# The "out" key below is then ignored and nothing reaches the disk; the
+# served page links the map at /map.svg for saving it after all. There is
+# no key for any of this: serving is a choice you make per run, not a
+# property of a map.
+#
 # Every relative path below is resolved against the directory holding this
 # file, never against the current working directory, so a map generates the
 # same files whatever directory you run it from. Paths are otherwise used as
@@ -48,8 +60,9 @@ maps:
     exclude:
       - github.com/ctx42/tst-*
 
-    # The SVG file this map is written to. Required, and an existing file is
-    # overwritten.
+    # The SVG file this map is written to. Required, and an existing file
+    # is overwritten. It is required even for a map you only ever serve
+    # with --web, which ignores it.
     out: tmp/ctx42-modules.svg
 
     # A map spanning more than one checkout directory. Modules found on disk

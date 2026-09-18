@@ -12,8 +12,9 @@ import (
 
 // Main is the modmap entrypoint: it parses the command line arguments carried
 // by rng, renders the requested maps, and returns the process exit code. The
-// usage text and every error are written to stderr; the SVG is always written
-// to a file.
+// usage text and every error are written to stderr; a map goes to the file
+// it names or, with the "--web" option, to a browser, and never to stdout.
+// A served map keeps Main running until ctx is done.
 //
 // The exit code is 0 on success and 1 on a usage or rendering failure.
 func Main(ctx context.Context, rng *ring.Ring) int {
