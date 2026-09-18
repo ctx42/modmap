@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{.Title}}</title>
+<style>
+html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#121212;}
+#map{position:absolute;top:0;left:0;transform-origin:0 0;will-change:transform;}
+#map svg{display:block;}
+#hint{position:fixed;left:12px;bottom:10px;z-index:2;color:#b86200;
+opacity:0.55;font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;
+pointer-events:none;user-select:none;}
+#hint a{color:inherit;pointer-events:auto;}
+</style>
+</head>
+<body>
+<div id="map">{{.Map}}</div>
+<div id="hint">drag to pan &middot; scroll to zoom &middot; 0 to fit
+&middot; <a href="map.svg" download>save the SVG</a></div>
+<script>
+(function () {
+	var box = document.getElementById('map');
+	var svg = box.querySelector('svg');
+	var vbw = svg.viewBox.baseVal.width || svg.clientWidth;
+	var vbh = svg.viewBox.baseVal.height || svg.clientHeight;
+	var k = 1, x = 0, y = 0;
+
+	function apply() {
+		box.style.transform =
+			'translate(' + x + 'px,' + y + 'px) scale(' + k + ')';
+	}
+
+	function fit() {
+		k = Math.min(innerWidth / vbw, innerHeight / vbh) * 0.94;
+		x = (innerWidth - vbw * k) / 2;
+		y = (innerHeight - vbh * k) / 2;
+		apply();
+	}
+
+	function zoom(factor, cx, cy) {
+		var next = Math.min(50, Math.max(0.02, k * factor));
+		factor = next / k;
+		x = cx - (cx - x) * factor;
+		y = cy - (cy - y) * factor;
+		k = next;
+		apply();
+	}
+
+	addEventListener('wheel', function (ev) {
+		ev.preventDefault();
+		zoom(Math.exp(-ev.deltaY * 0.002), ev.clientX, ev.clientY);
+	}, {passive: false});
+
+	var drag = null, moved = false;
+
+	addEventListener('mousedown', function (ev) {
+		if (ev.button !== 0) { return; }
+		ev.preventDefault();
+		drag = {sx: ev.clientX, sy: ev.clientY, ox: x, oy: y};
+		moved = false;
+	});
+
+	addEventListener('mousemove', function (ev) {
+		if (!drag) { return; }
+		var dx = ev.clientX - drag.sx, dy = ev.clientY - drag.sy;
+		if (!moved && Math.abs(dx) + Math.abs(dy) < 4) { return; }
+		moved = true;
+		x = drag.ox + dx;
+		y = drag.oy + dy;
+		apply();
+	});
+
+	addEventListener('mouseup', function () { drag = null; });
+
+	addEventListener('click', function (ev) {
+		if (moved) { moved = false; return; }
+		var mod = ev.target.closest && ev.target.closest('g.module');
+		if (mod) { mod.focus(); return; }
+		if (document.activeElement) { document.activeElement.blur(); }
+	});
+
+	addEventListener('keydown', function (ev) {
+		if (ev.key === '0') { fit(); }
+		else if (ev.key === '+' || ev.key === '=') {
+			zoom(1.25, innerWidth / 2, innerHeight / 2);
+		} else if (ev.key === '-') {
+			zoom(0.8, innerWidth / 2, innerHeight / 2);
+		}
+	});
+
+	addEventListener('resize', fit);
+	fit();
+})();
+</script>
+</body>
+</html>

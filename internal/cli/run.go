@@ -4,14 +4,17 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/ctx42/ring/pkg/ring"
 
 	"github.com/ctx42/modmap/internal/conf"
 	"github.com/ctx42/modmap/internal/svg"
+	"github.com/ctx42/modmap/internal/web"
 	"github.com/ctx42/modmap/pkg/graph"
 	"github.com/ctx42/modmap/pkg/mod"
 )
@@ -26,7 +29,7 @@ func run(ctx context.Context, rng *ring.Ring, cfg *config) error {
 			Exclude: cfg.exclude,
 			Out:     cfg.out,
 		}
-		return generate(ctx, rng, spc, cfg.yes)
+		return generate(ctx, rng, cfg, spc)
 	}
 
 	fil, err := conf.Load(cfg.conf)
@@ -45,7 +48,7 @@ func run(ctx context.Context, rng *ring.Ring, cfg *config) error {
 			Exclude: mp.Exclude,
 			Out:     mp.Out,
 		}
-		if err = generate(ctx, rng, spc, cfg.yes); err != nil {
+		if err = generate(ctx, rng, cfg, spc); err != nil {
 			return fmt.Errorf("map %s: %w", mp.Name, err)
 		}
 	}
@@ -67,18 +70,30 @@ type spec struct {
 	// Exclude holds the module path globs removing modules from the map.
 	Exclude []string
 
-	// Out is the absolute path of the SVG file to write.
+	// Out is the absolute path of the SVG file to write. It is empty
+	// when the map is served instead of written.
 	Out string
 }
 
-// generate builds the map described by spc and writes it to its output file.
-// It returns nil without writing anything when the user declines to render a
-// map with a very wide level.
+// title returns the name the map is shown under when it is served.
+func (spc spec) title() string {
+	if spc.Name != "" {
+		return spc.Name
+	}
+	if len(spc.Dirs) > 0 {
+		return filepath.Base(spc.Dirs[0])
+	}
+	return binName
+}
+
+// generate builds the map described by spc and either writes it to its
+// output file or serves it in a browser. It returns nil without writing
+// anything when the user declines to render a map with a very wide level.
 func generate(
 	ctx context.Context,
 	rng *ring.Ring,
+	cfg *config,
 	spc spec,
-	yes bool,
 ) error {
 
 	logf := func(format string, args ...any) {
@@ -105,14 +120,38 @@ func generate(
 	}
 	logf("graph has %d modules, widest level %d", grp.Len(), grp.Widest())
 
-	render, err := confirm(rng, grp.Widest(), yes)
+	render, err := confirm(rng, grp.Widest(), cfg.yes)
 	if err != nil {
 		return err
 	}
 	if !render {
 		return nil
 	}
+	if cfg.web {
+		return serve(ctx, logf, cfg, spc.title(), grp)
+	}
 	return write(grp, spc.Out)
+}
+
+// serve renders the graph and serves it in a browser until ctx is done.
+func serve(
+	ctx context.Context,
+	logf func(format string, args ...any),
+	cfg *config,
+	title string,
+	grp *graph.Graph,
+) error {
+
+	rnd, err := svg.NewRenderer()
+	if err != nil {
+		return err
+	}
+	buf := &bytes.Buffer{}
+	if err = rnd.Render(grp, buf); err != nil {
+		return err
+	}
+	srv := web.New(title, buf.Bytes(), logf, cfg.opener)
+	return srv.Serve(ctx, cfg.webAddr)
 }
 
 // write renders the graph into the file at pth.

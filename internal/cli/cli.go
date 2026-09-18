@@ -19,9 +19,19 @@ var (
 	errManyDirs = errors.New("only one directory can be scanned at a time")
 
 	// errNoOut is returned when the output file is not given.
-	errNoOut = errors.New("the -o option is required")
+	errNoOut = errors.New("either -o or --web is required")
 
 	// errConfOnly is returned when options which the configuration file
 	// provides are used alongside it.
 	errConfOnly = errors.New("-c cannot be used with other options")
+
+	// errWebOut is returned when the map is served and written at once.
+	errWebOut = errors.New("--web cannot be used with -o")
+
+	// errWebMap is returned when the served map is not named exactly
+	// once.
+	errWebMap = errors.New("--web with -c needs exactly one map name")
+
+	// errWebAddr is returned when the "--web" address is malformed.
+	errWebAddr = errors.New("malformed --web address")
 )

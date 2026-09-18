@@ -39,6 +39,8 @@ install to look at it.
   being drawn as something they are not.
 - One SVG file with the font embedded and the dependency data in
   `data-*` attributes; it carries no script at all.
+- `--web` serves the map in a browser, pan and zoom included, without
+  writing anything to disk.
 
 ## Prerequisites
 
@@ -115,6 +117,28 @@ the closure has to come from the cache or the network, and much wider.
 `modmap` asks before rendering a level of more than 20 modules; `--yes`
 answers for it in scripts.
 
+### Looking without saving
+
+`--web` serves the map and opens it in a browser instead of writing a
+file, the way `go tool pprof -http` does. The page pans with a drag,
+zooms with the wheel, fits again with `0`, and hovering and pinning work
+exactly as they do in the file:
+
+```shell
+modmap --web --include 'github.com/ctx42/*' ~/src/ctx42
+```
+
+The server picks a free port on the loopback interface and keeps running
+until Ctrl-C. Give it an address to pin one: `--web=:8080` for every
+interface, `--web=8080` for the loopback, `--web=127.0.0.1:8080` in
+full. The map is never written to disk, so `--web` and `-o` cannot be
+combined; the served page links the SVG at `/map.svg` when you want to
+keep it after all.
+
+With a configuration file, `--web` serves one named map:
+`modmap --web -c modmap.yaml ctx42`. Naming none, or naming several, is
+an error — only one map can be served at a time.
+
 ### Several maps at once
 
 A configuration file names the maps a project keeps, so they are
@@ -136,7 +160,8 @@ Command line options:
 
 | Option          | Meaning                                          |
 |-----------------|--------------------------------------------------|
-| `-o, --out`     | SVG file to write; required without `-c`         |
+| `-o, --out`     | SVG file to write; required without `-c`/`--web` |
+| `--web[=addr]`  | serve the map in a browser instead of writing it |
 | `-i, --include` | draw only modules matching the glob; repeatable  |
 | `-e, --exclude` | never draw modules matching the glob; repeatable |
 | `-c, --config`  | configuration file naming the maps to generate   |

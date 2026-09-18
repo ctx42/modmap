@@ -7,6 +7,7 @@
 *.test.*
 *.out
 *.html
+!internal/web/page.html
 coverage.*
 
 # Project temp / build / release

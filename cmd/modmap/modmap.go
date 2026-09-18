@@ -9,6 +9,7 @@ package main
 import (
 	"context"
 	"os"
+	"os/signal"
 
 	"github.com/ctx42/ring/pkg/ring"
 
@@ -16,7 +17,10 @@ import (
 )
 
 func main() {
-	ctx := context.Background()
-	rng := ring.New()
-	os.Exit(cli.Main(ctx, rng))
+	// The served map keeps running until interrupted, so Ctrl-C has to
+	// reach it as a cancelled context rather than as a killed process.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	code := cli.Main(ctx, ring.New())
+	stop()
+	os.Exit(code)
 }

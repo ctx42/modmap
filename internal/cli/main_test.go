@@ -69,7 +69,7 @@ func Test_Main(t *testing.T) {
 
 		// --- Then ---
 		assert.Equal(t, 1, have)
-		want := "modmap: the -o option is required\n"
+		want := "modmap: either -o or --web is required\n"
 		assert.Contain(t, want, tst.Stderr())
 		assert.Contain(t, "Usage:", tst.Stderr())
 	})
