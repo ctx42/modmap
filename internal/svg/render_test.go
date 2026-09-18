@@ -6,6 +6,7 @@ package svg
 import (
 	"bytes"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/ctx42/goldkit/pkg/goldkit"
@@ -255,7 +256,60 @@ func Test_relClasses(t *testing.T) {
 	})
 }
 
-func Test_hoverCSS(t *testing.T) {
+func Test_badges(t *testing.T) {
+	t.Run("a chain is numbered from every module", func(t *testing.T) {
+		// --- Given ---
+		grp := newGraph(map[string][]string{
+			"example.com/app":  {"example.com/lib"},
+			"example.com/lib":  {"example.com/core"},
+			"example.com/core": nil,
+		})
+		ids := moduleIDs(grp)
+
+		// --- When ---
+		have := badges(grp, ids)
+
+		// --- Then ---
+		wCore := []badge{{"m0", 1}}
+		assert.Equal(t, wCore, have["example.com/core"])
+		wLib := []badge{{"m0", 2}, {"m1", 1}}
+		assert.Equal(t, wLib, have["example.com/lib"])
+		wApp := []badge{{"m0", 3}, {"m1", 2}, {"m2", 1}}
+		assert.Equal(t, wApp, have["example.com/app"])
+	})
+
+	t.Run("separate chains are numbered apart", func(t *testing.T) {
+		// --- Given ---
+		grp := newGraph(map[string][]string{
+			"example.com/app":  {"example.com/core"},
+			"example.com/tool": nil,
+			"example.com/core": nil,
+		})
+		ids := moduleIDs(grp)
+
+		// --- When ---
+		have := badges(grp, ids)
+
+		// --- Then ---
+		wApp := []badge{{"m0", 2}, {"m2", 1}}
+		assert.Equal(t, wApp, have["example.com/app"])
+		assert.Equal(t, []badge{{"m0", 1}}, have["example.com/core"])
+		assert.Equal(t, []badge{{"m1", 1}}, have["example.com/tool"])
+	})
+
+	t.Run("no modules carry no digits", func(t *testing.T) {
+		// --- Given ---
+		grp := newGraph(nil)
+
+		// --- When ---
+		have := badges(grp, moduleIDs(grp))
+
+		// --- Then ---
+		assert.Empty(t, have)
+	})
+}
+
+func Test_interactCSS(t *testing.T) {
 	t.Run("one rule per module and the base rules", func(t *testing.T) {
 		// --- Given ---
 		grp := newGraph(map[string][]string{
@@ -265,7 +319,7 @@ func Test_hoverCSS(t *testing.T) {
 		ids := moduleIDs(grp)
 
 		// --- When ---
-		have := hoverCSS(grp, ids)
+		have := interactCSS(grp, ids)
 
 		// --- Then ---
 		assert.Contain(t, cssBase, have)
@@ -280,6 +334,12 @@ func Test_hoverCSS(t *testing.T) {
 		wApp := "svg:has(#m1:focus) #m1," +
 			"svg:has(#m1:focus) .rm1{opacity:1;}"
 		assert.Contain(t, wApp, have)
+
+		wBadge := "svg:not(:has(.module:focus)):has(#m0:hover) .bm0," +
+			"svg:has(#m0:focus) .bm0{visibility:visible;}"
+		assert.Contain(t, wBadge, have)
+		shown := strings.Count(have, "{visibility:visible;}")
+		assert.Equal(t, 2, shown)
 	})
 
 	t.Run("no modules need no rules", func(t *testing.T) {
@@ -287,7 +347,7 @@ func Test_hoverCSS(t *testing.T) {
 		grp := newGraph(nil)
 
 		// --- When ---
-		have := hoverCSS(grp, moduleIDs(grp))
+		have := interactCSS(grp, moduleIDs(grp))
 
 		// --- Then ---
 		assert.Equal(t, "", have)

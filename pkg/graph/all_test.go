@@ -4,6 +4,11 @@
 package graph
 
 import (
+	"encoding/json"
+	"os"
+
+	"github.com/ctx42/testing/pkg/tester"
+
 	"github.com/ctx42/modmap/pkg/mod"
 )
 
@@ -49,4 +54,18 @@ func newGraph(deps map[string][]string) *Graph {
 		}
 	}
 	return grp
+}
+
+// loadDeps reads the module dependencies fixture at pth.
+func loadDeps(t tester.T, pth string) map[string][]string {
+	t.Helper()
+	data, err := os.ReadFile(pth)
+	if err != nil {
+		t.Fatal(err)
+	}
+	deps := make(map[string][]string)
+	if err = json.Unmarshal(data, &deps); err != nil {
+		t.Fatal(err)
+	}
+	return deps
 }

@@ -1,0 +1,98 @@
+{
+  "github.com/ctx42/blog": [],
+  "github.com/ctx42/convert": [
+    "github.com/ctx42/testing"
+  ],
+  "github.com/ctx42/dkigo": [
+    "github.com/ctx42/dotenv",
+    "github.com/ctx42/testing",
+    "github.com/ctx42/xdef"
+  ],
+  "github.com/ctx42/dotenv": [
+    "github.com/ctx42/testing"
+  ],
+  "github.com/ctx42/gitaid": [
+    "github.com/ctx42/testing",
+    "github.com/ctx42/testkit"
+  ],
+  "github.com/ctx42/gmtask": [
+    "github.com/ctx42/dotenv",
+    "github.com/ctx42/gitaid",
+    "github.com/ctx42/gomake",
+    "github.com/ctx42/ring",
+    "github.com/ctx42/testing",
+    "github.com/ctx42/testkit",
+    "github.com/ctx42/xdef",
+    "github.com/ctx42/xflag"
+  ],
+  "github.com/ctx42/goldkit": [
+    "github.com/ctx42/testing",
+    "github.com/ctx42/testkit"
+  ],
+  "github.com/ctx42/gomake": [
+    "github.com/ctx42/ring",
+    "github.com/ctx42/testing",
+    "github.com/ctx42/testkit",
+    "github.com/ctx42/xdef",
+    "github.com/ctx42/xflag"
+  ],
+  "github.com/ctx42/jsontype": [
+    "github.com/ctx42/convert",
+    "github.com/ctx42/testing"
+  ],
+  "github.com/ctx42/logkit": [
+    "github.com/ctx42/testing"
+  ],
+  "github.com/ctx42/memfs": [
+    "github.com/ctx42/testing"
+  ],
+  "github.com/ctx42/mirror": [
+    "github.com/ctx42/testing",
+    "github.com/ctx42/testkit"
+  ],
+  "github.com/ctx42/modmap": [
+    "github.com/ctx42/ring",
+    "github.com/ctx42/testing",
+    "github.com/ctx42/testkit",
+    "github.com/ctx42/xflag"
+  ],
+  "github.com/ctx42/nomix": [
+    "github.com/ctx42/testing",
+    "github.com/ctx42/verax",
+    "github.com/ctx42/xrr"
+  ],
+  "github.com/ctx42/ring": [
+    "github.com/ctx42/testing",
+    "github.com/ctx42/testkit"
+  ],
+  "github.com/ctx42/testing": [],
+  "github.com/ctx42/testkit": [
+    "github.com/ctx42/testing",
+    "github.com/ctx42/xdef"
+  ],
+  "github.com/ctx42/verax": [
+    "github.com/ctx42/convert",
+    "github.com/ctx42/jsontype",
+    "github.com/ctx42/mirror",
+    "github.com/ctx42/testing",
+    "github.com/ctx42/xrr"
+  ],
+  "github.com/ctx42/xctr": [
+    "github.com/ctx42/gitaid",
+    "github.com/ctx42/ring",
+    "github.com/ctx42/testing",
+    "github.com/ctx42/testkit",
+    "github.com/ctx42/xdef"
+  ],
+  "github.com/ctx42/xdef": [],
+  "github.com/ctx42/xflag": [
+    "github.com/ctx42/testing"
+  ],
+  "github.com/ctx42/xftp": [
+    "github.com/ctx42/logkit",
+    "github.com/ctx42/testing"
+  ],
+  "github.com/ctx42/xrr": [
+    "github.com/ctx42/testing"
+  ]
+}

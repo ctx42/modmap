@@ -4,7 +4,10 @@
 package graph_test
 
 import (
+	"cmp"
 	"fmt"
+	"maps"
+	"slices"
 
 	"github.com/ctx42/modmap/pkg/graph"
 	"github.com/ctx42/modmap/pkg/mod"
@@ -65,4 +68,43 @@ func ExampleCycleError() {
 	fmt.Println(err)
 	// Output:
 	// dependency cycle: example.com/a -> example.com/b -> example.com/a
+}
+
+func ExampleGraph_Order() {
+	mods := map[string]*mod.Module{
+		"example.com/app": {
+			Path: "example.com/app",
+			Requires: []mod.Require{
+				{Path: "example.com/lib", Ver: "v1.0.0"},
+				{Path: "example.com/core", Ver: "v1.0.0"},
+			},
+		},
+		"example.com/lib": {
+			Path: "example.com/lib",
+			Requires: []mod.Require{
+				{Path: "example.com/core", Ver: "v1.0.0"},
+			},
+		},
+		"example.com/core": {Path: "example.com/core"},
+	}
+
+	grp, err := graph.New(mods)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	ord := grp.Order("example.com/core")
+	pths := slices.Sorted(maps.Keys(ord))
+	slices.SortStableFunc(pths, func(a, b string) int {
+		return cmp.Compare(ord[a], ord[b])
+	})
+
+	for _, pth := range pths {
+		fmt.Println(ord[pth], pth)
+	}
+	// Output:
+	// 1 example.com/core
+	// 2 example.com/lib
+	// 3 example.com/app
 }

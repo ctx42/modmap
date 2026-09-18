@@ -8,30 +8,54 @@ body: |
   .module rect{pointer-events:all;}
   .module:focus{outline:none;}
   .module:focus rect{stroke-dasharray:none;}
+  .badge{visibility:hidden;}
   svg:has(.module:hover) .module,svg:has(.module:focus) .module{opacity:0.12;}
   svg:not(:has(.module:focus)):has(#m0:hover) #m0,svg:not(:has(.module:focus)):has(#m0:hover) .rm0,svg:has(#m0:focus) #m0,svg:has(#m0:focus) .rm0{opacity:1;}
+  svg:not(:has(.module:focus)):has(#m0:hover) .bm0,svg:has(#m0:focus) .bm0{visibility:visible;}
   svg:not(:has(.module:focus)):has(#m1:hover) #m1,svg:not(:has(.module:focus)):has(#m1:hover) .rm1,svg:has(#m1:focus) #m1,svg:has(#m1:focus) .rm1{opacity:1;}
+  svg:not(:has(.module:focus)):has(#m1:hover) .bm1,svg:has(#m1:focus) .bm1{visibility:visible;}
   svg:not(:has(.module:focus)):has(#m2:hover) #m2,svg:not(:has(.module:focus)):has(#m2:hover) .rm2,svg:has(#m2:focus) #m2,svg:has(#m2:focus) .rm2{opacity:1;}
+  svg:not(:has(.module:focus)):has(#m2:hover) .bm2,svg:has(#m2:focus) .bm2{visibility:visible;}
   svg:not(:has(.module:focus)):has(#m3:hover) #m3,svg:not(:has(.module:focus)):has(#m3:hover) .rm3,svg:has(#m3:focus) #m3,svg:has(#m3:focus) .rm3{opacity:1;}
+  svg:not(:has(.module:focus)):has(#m3:hover) .bm3,svg:has(#m3:focus) .bm3{visibility:visible;}
   svg:not(:has(.module:focus)):has(#m4:hover) #m4,svg:not(:has(.module:focus)):has(#m4:hover) .rm4,svg:has(#m4:focus) #m4,svg:has(#m4:focus) .rm4{opacity:1;}
+  svg:not(:has(.module:focus)):has(#m4:hover) .bm4,svg:has(#m4:focus) .bm4{visibility:visible;}
   svg:not(:has(.module:focus)):has(#m5:hover) #m5,svg:not(:has(.module:focus)):has(#m5:hover) .rm5,svg:has(#m5:focus) #m5,svg:has(#m5:focus) .rm5{opacity:1;}
+  svg:not(:has(.module:focus)):has(#m5:hover) .bm5,svg:has(#m5:focus) .bm5{visibility:visible;}
   svg:not(:has(.module:focus)):has(#m6:hover) #m6,svg:not(:has(.module:focus)):has(#m6:hover) .rm6,svg:has(#m6:focus) #m6,svg:has(#m6:focus) .rm6{opacity:1;}
+  svg:not(:has(.module:focus)):has(#m6:hover) .bm6,svg:has(#m6:focus) .bm6{visibility:visible;}
   svg:not(:has(.module:focus)):has(#m7:hover) #m7,svg:not(:has(.module:focus)):has(#m7:hover) .rm7,svg:has(#m7:focus) #m7,svg:has(#m7:focus) .rm7{opacity:1;}
+  svg:not(:has(.module:focus)):has(#m7:hover) .bm7,svg:has(#m7:focus) .bm7{visibility:visible;}
   svg:not(:has(.module:focus)):has(#m8:hover) #m8,svg:not(:has(.module:focus)):has(#m8:hover) .rm8,svg:has(#m8:focus) #m8,svg:has(#m8:focus) .rm8{opacity:1;}
+  svg:not(:has(.module:focus)):has(#m8:hover) .bm8,svg:has(#m8:focus) .bm8{visibility:visible;}
   svg:not(:has(.module:focus)):has(#m9:hover) #m9,svg:not(:has(.module:focus)):has(#m9:hover) .rm9,svg:has(#m9:focus) #m9,svg:has(#m9:focus) .rm9{opacity:1;}
+  svg:not(:has(.module:focus)):has(#m9:hover) .bm9,svg:has(#m9:focus) .bm9{visibility:visible;}
   svg:not(:has(.module:focus)):has(#m10:hover) #m10,svg:not(:has(.module:focus)):has(#m10:hover) .rm10,svg:has(#m10:focus) #m10,svg:has(#m10:focus) .rm10{opacity:1;}
+  svg:not(:has(.module:focus)):has(#m10:hover) .bm10,svg:has(#m10:focus) .bm10{visibility:visible;}
   svg:not(:has(.module:focus)):has(#m11:hover) #m11,svg:not(:has(.module:focus)):has(#m11:hover) .rm11,svg:has(#m11:focus) #m11,svg:has(#m11:focus) .rm11{opacity:1;}
+  svg:not(:has(.module:focus)):has(#m11:hover) .bm11,svg:has(#m11:focus) .bm11{visibility:visible;}
   svg:not(:has(.module:focus)):has(#m12:hover) #m12,svg:not(:has(.module:focus)):has(#m12:hover) .rm12,svg:has(#m12:focus) #m12,svg:has(#m12:focus) .rm12{opacity:1;}
+  svg:not(:has(.module:focus)):has(#m12:hover) .bm12,svg:has(#m12:focus) .bm12{visibility:visible;}
   svg:not(:has(.module:focus)):has(#m13:hover) #m13,svg:not(:has(.module:focus)):has(#m13:hover) .rm13,svg:has(#m13:focus) #m13,svg:has(#m13:focus) .rm13{opacity:1;}
+  svg:not(:has(.module:focus)):has(#m13:hover) .bm13,svg:has(#m13:focus) .bm13{visibility:visible;}
   svg:not(:has(.module:focus)):has(#m14:hover) #m14,svg:not(:has(.module:focus)):has(#m14:hover) .rm14,svg:has(#m14:focus) #m14,svg:has(#m14:focus) .rm14{opacity:1;}
+  svg:not(:has(.module:focus)):has(#m14:hover) .bm14,svg:has(#m14:focus) .bm14{visibility:visible;}
   svg:not(:has(.module:focus)):has(#m15:hover) #m15,svg:not(:has(.module:focus)):has(#m15:hover) .rm15,svg:has(#m15:focus) #m15,svg:has(#m15:focus) .rm15{opacity:1;}
+  svg:not(:has(.module:focus)):has(#m15:hover) .bm15,svg:has(#m15:focus) .bm15{visibility:visible;}
   svg:not(:has(.module:focus)):has(#m16:hover) #m16,svg:not(:has(.module:focus)):has(#m16:hover) .rm16,svg:has(#m16:focus) #m16,svg:has(#m16:focus) .rm16{opacity:1;}
+  svg:not(:has(.module:focus)):has(#m16:hover) .bm16,svg:has(#m16:focus) .bm16{visibility:visible;}
   svg:not(:has(.module:focus)):has(#m17:hover) #m17,svg:not(:has(.module:focus)):has(#m17:hover) .rm17,svg:has(#m17:focus) #m17,svg:has(#m17:focus) .rm17{opacity:1;}
+  svg:not(:has(.module:focus)):has(#m17:hover) .bm17,svg:has(#m17:focus) .bm17{visibility:visible;}
   svg:not(:has(.module:focus)):has(#m18:hover) #m18,svg:not(:has(.module:focus)):has(#m18:hover) .rm18,svg:has(#m18:focus) #m18,svg:has(#m18:focus) .rm18{opacity:1;}
+  svg:not(:has(.module:focus)):has(#m18:hover) .bm18,svg:has(#m18:focus) .bm18{visibility:visible;}
   svg:not(:has(.module:focus)):has(#m19:hover) #m19,svg:not(:has(.module:focus)):has(#m19:hover) .rm19,svg:has(#m19:focus) #m19,svg:has(#m19:focus) .rm19{opacity:1;}
+  svg:not(:has(.module:focus)):has(#m19:hover) .bm19,svg:has(#m19:focus) .bm19{visibility:visible;}
   svg:not(:has(.module:focus)):has(#m20:hover) #m20,svg:not(:has(.module:focus)):has(#m20:hover) .rm20,svg:has(#m20:focus) #m20,svg:has(#m20:focus) .rm20{opacity:1;}
+  svg:not(:has(.module:focus)):has(#m20:hover) .bm20,svg:has(#m20:focus) .bm20{visibility:visible;}
   svg:not(:has(.module:focus)):has(#m21:hover) #m21,svg:not(:has(.module:focus)):has(#m21:hover) .rm21,svg:has(#m21:focus) #m21,svg:has(#m21:focus) .rm21{opacity:1;}
+  svg:not(:has(.module:focus)):has(#m21:hover) .bm21,svg:has(#m21:focus) .bm21{visibility:visible;}
   svg:not(:has(.module:focus)):has(#m22:hover) #m22,svg:not(:has(.module:focus)):has(#m22:hover) .rm22,svg:has(#m22:focus) #m22,svg:has(#m22:focus) .rm22{opacity:1;}
+  svg:not(:has(.module:focus)):has(#m22:hover) .bm22,svg:has(#m22:focus) .bm22{visibility:visible;}
   </style></defs>
   <rect x="0" y="0" width="5805.140625" height="2919" fill="#121212"/>
   <line x1="108" y1="2889.5" x2="5697.140625" y2="2889.5" stroke="#154162" stroke-width="2.5" stroke-dasharray="8 10"/>
@@ -47,93 +71,181 @@ body: |
   <g id="m0" class="module" tabindex="0" data-module="github.com/ctx42/blog" data-level="0" data-dependents="">
   <rect x="216" y="2488" width="544.734375" height="231" rx="32" fill="none" stroke="#d3d3d3" stroke-width="2.5" stroke-dasharray="8 10"/>
   <text x="488.3671875" y="2616.5078125" fill="#d3d3d3" font-size="36" text-anchor="middle">github.com/ctx42/blog</text>
+  <text x="730.734375" y="2535.34375" class="badge bm0" fill="#b86200" font-size="24" text-anchor="end">1</text>
   </g>
   <g id="m1" class="module rm10 rm11 rm12 rm13 rm14 rm15 rm16 rm17 rm18 rm19 rm20 rm21 rm22 rm3 rm4 rm5 rm6 rm7 rm8 rm9" tabindex="0" data-module="github.com/ctx42/testing" data-level="0" data-dependents="github.com/ctx42/convert github.com/ctx42/dkigo github.com/ctx42/dotenv github.com/ctx42/gitaid github.com/ctx42/gmtask github.com/ctx42/goldkit github.com/ctx42/gomake github.com/ctx42/jsontype github.com/ctx42/logkit github.com/ctx42/memfs github.com/ctx42/mirror github.com/ctx42/modmap github.com/ctx42/nomix github.com/ctx42/ring github.com/ctx42/testkit github.com/ctx42/verax github.com/ctx42/xctr github.com/ctx42/xflag github.com/ctx42/xftp github.com/ctx42/xrr">
   <rect x="1020.734375" y="2488" width="544.734375" height="231" rx="32" fill="none" stroke="#d3d3d3" stroke-width="2.5" stroke-dasharray="8 10"/>
   <text x="1293.1015625" y="2616.5078125" fill="#d3d3d3" font-size="36" text-anchor="middle">github.com/ctx42/testing</text>
+  <text x="1535.46875" y="2535.34375" class="badge bm1" fill="#b86200" font-size="24" text-anchor="end">1</text>
   </g>
   <g id="m2" class="module rm10 rm11 rm12 rm14 rm15 rm17 rm18 rm19 rm20 rm21 rm22 rm7" tabindex="0" data-module="github.com/ctx42/xdef" data-level="0" data-dependents="github.com/ctx42/dkigo github.com/ctx42/gitaid github.com/ctx42/gmtask github.com/ctx42/goldkit github.com/ctx42/gomake github.com/ctx42/mirror github.com/ctx42/modmap github.com/ctx42/nomix github.com/ctx42/ring github.com/ctx42/testkit github.com/ctx42/verax github.com/ctx42/xctr">
   <rect x="1825.46875" y="2488" width="544.734375" height="231" rx="32" fill="none" stroke="#d3d3d3" stroke-width="2.5" stroke-dasharray="8 10"/>
   <text x="2097.8359375" y="2616.5078125" fill="#d3d3d3" font-size="36" text-anchor="middle">github.com/ctx42/xdef</text>
+  <text x="2340.203125" y="2535.34375" class="badge bm2" fill="#b86200" font-size="24" text-anchor="end">1</text>
   </g>
   <g id="m3" class="module rm1 rm13 rm19 rm22" tabindex="0" data-module="github.com/ctx42/convert" data-level="1" data-dependents="github.com/ctx42/jsontype github.com/ctx42/nomix github.com/ctx42/verax">
   <rect x="216" y="1916" width="544.734375" height="231" rx="32" fill="none" stroke="#d3d3d3" stroke-width="2.5" stroke-dasharray="8 10"/>
   <text x="488.3671875" y="2044.5078125" fill="#d3d3d3" font-size="36" text-anchor="middle">github.com/ctx42/convert</text>
+  <text x="730.734375" y="1963.34375" class="badge bm1" fill="#b86200" font-size="24" text-anchor="end">2</text>
+  <text x="730.734375" y="1963.34375" class="badge bm3" fill="#b86200" font-size="24" text-anchor="end">1</text>
   </g>
   <g id="m4" class="module rm1 rm10 rm21" tabindex="0" data-module="github.com/ctx42/dotenv" data-level="1" data-dependents="github.com/ctx42/dkigo github.com/ctx42/gmtask">
   <rect x="1020.734375" y="1916" width="544.734375" height="231" rx="32" fill="none" stroke="#d3d3d3" stroke-width="2.5" stroke-dasharray="8 10"/>
   <text x="1293.1015625" y="2044.5078125" fill="#d3d3d3" font-size="36" text-anchor="middle">github.com/ctx42/dotenv</text>
+  <text x="1535.46875" y="1963.34375" class="badge bm1" fill="#b86200" font-size="24" text-anchor="end">2</text>
+  <text x="1535.46875" y="1963.34375" class="badge bm4" fill="#b86200" font-size="24" text-anchor="end">1</text>
   </g>
   <g id="m5" class="module rm1 rm16" tabindex="0" data-module="github.com/ctx42/logkit" data-level="1" data-dependents="github.com/ctx42/xftp">
   <rect x="1825.46875" y="1916" width="544.734375" height="231" rx="32" fill="none" stroke="#d3d3d3" stroke-width="2.5" stroke-dasharray="8 10"/>
   <text x="2097.8359375" y="2044.5078125" fill="#d3d3d3" font-size="36" text-anchor="middle">github.com/ctx42/logkit</text>
+  <text x="2340.203125" y="1963.34375" class="badge bm1" fill="#b86200" font-size="24" text-anchor="end">2</text>
+  <text x="2340.203125" y="1963.34375" class="badge bm5" fill="#b86200" font-size="24" text-anchor="end">1</text>
   </g>
   <g id="m6" class="module rm1" tabindex="0" data-module="github.com/ctx42/memfs" data-level="1" data-dependents="">
   <rect x="2630.203125" y="1916" width="544.734375" height="231" rx="32" fill="none" stroke="#d3d3d3" stroke-width="2.5" stroke-dasharray="8 10"/>
   <text x="2902.5703125" y="2044.5078125" fill="#d3d3d3" font-size="36" text-anchor="middle">github.com/ctx42/memfs</text>
+  <text x="3144.9375" y="1963.34375" class="badge bm1" fill="#b86200" font-size="24" text-anchor="end">2</text>
+  <text x="3144.9375" y="1963.34375" class="badge bm6" fill="#b86200" font-size="24" text-anchor="end">1</text>
   </g>
   <g id="m7" class="module rm1 rm11 rm12 rm14 rm15 rm17 rm18 rm19 rm2 rm20 rm21 rm22" tabindex="0" data-module="github.com/ctx42/testkit" data-level="1" data-dependents="github.com/ctx42/gitaid github.com/ctx42/gmtask github.com/ctx42/goldkit github.com/ctx42/gomake github.com/ctx42/mirror github.com/ctx42/modmap github.com/ctx42/nomix github.com/ctx42/ring github.com/ctx42/verax github.com/ctx42/xctr">
   <rect x="3434.9375" y="1916" width="544.734375" height="231" rx="32" fill="none" stroke="#d3d3d3" stroke-width="2.5" stroke-dasharray="8 10"/>
   <text x="3707.3046875" y="2044.5078125" fill="#d3d3d3" font-size="36" text-anchor="middle">github.com/ctx42/testkit</text>
+  <text x="3949.671875" y="1963.34375" class="badge bm1" fill="#b86200" font-size="24" text-anchor="end">2</text>
+  <text x="3949.671875" y="1963.34375" class="badge bm2" fill="#b86200" font-size="24" text-anchor="end">2</text>
+  <text x="3949.671875" y="1963.34375" class="badge bm7" fill="#b86200" font-size="24" text-anchor="end">1</text>
   </g>
   <g id="m8" class="module rm1 rm17 rm18 rm21" tabindex="0" data-module="github.com/ctx42/xflag" data-level="1" data-dependents="github.com/ctx42/gmtask github.com/ctx42/gomake github.com/ctx42/modmap">
   <rect x="4239.671875" y="1916" width="544.734375" height="231" rx="32" fill="none" stroke="#d3d3d3" stroke-width="2.5" stroke-dasharray="8 10"/>
   <text x="4512.0390625" y="2044.5078125" fill="#d3d3d3" font-size="36" text-anchor="middle">github.com/ctx42/xflag</text>
+  <text x="4754.40625" y="1963.34375" class="badge bm1" fill="#b86200" font-size="24" text-anchor="end">2</text>
+  <text x="4754.40625" y="1963.34375" class="badge bm8" fill="#b86200" font-size="24" text-anchor="end">1</text>
   </g>
   <g id="m9" class="module rm1 rm19 rm22" tabindex="0" data-module="github.com/ctx42/xrr" data-level="1" data-dependents="github.com/ctx42/nomix github.com/ctx42/verax">
   <rect x="5044.40625" y="1916" width="544.734375" height="231" rx="32" fill="none" stroke="#d3d3d3" stroke-width="2.5" stroke-dasharray="8 10"/>
   <text x="5316.7734375" y="2044.5078125" fill="#d3d3d3" font-size="36" text-anchor="middle">github.com/ctx42/xrr</text>
+  <text x="5559.140625" y="1963.34375" class="badge bm1" fill="#b86200" font-size="24" text-anchor="end">2</text>
+  <text x="5559.140625" y="1963.34375" class="badge bm9" fill="#b86200" font-size="24" text-anchor="end">1</text>
   </g>
   <g id="m10" class="module rm1 rm2 rm4" tabindex="0" data-module="github.com/ctx42/dkigo" data-level="2" data-dependents="">
   <rect x="216" y="1344" width="544.734375" height="231" rx="32" fill="none" stroke="#d3d3d3" stroke-width="2.5" stroke-dasharray="8 10"/>
   <text x="488.3671875" y="1472.5078125" fill="#d3d3d3" font-size="36" text-anchor="middle">github.com/ctx42/dkigo</text>
+  <text x="730.734375" y="1391.34375" class="badge bm1" fill="#b86200" font-size="24" text-anchor="end">3</text>
+  <text x="730.734375" y="1391.34375" class="badge bm2" fill="#b86200" font-size="24" text-anchor="end">2</text>
+  <text x="730.734375" y="1391.34375" class="badge bm4" fill="#b86200" font-size="24" text-anchor="end">2</text>
+  <text x="730.734375" y="1391.34375" class="badge bm10" fill="#b86200" font-size="24" text-anchor="end">1</text>
   </g>
   <g id="m11" class="module rm1 rm2 rm20 rm21 rm7" tabindex="0" data-module="github.com/ctx42/gitaid" data-level="2" data-dependents="github.com/ctx42/gmtask github.com/ctx42/xctr">
   <rect x="1020.734375" y="1344" width="544.734375" height="231" rx="32" fill="none" stroke="#d3d3d3" stroke-width="2.5" stroke-dasharray="8 10"/>
   <text x="1293.1015625" y="1472.5078125" fill="#d3d3d3" font-size="36" text-anchor="middle">github.com/ctx42/gitaid</text>
+  <text x="1535.46875" y="1391.34375" class="badge bm1" fill="#b86200" font-size="24" text-anchor="end">3</text>
+  <text x="1535.46875" y="1391.34375" class="badge bm2" fill="#b86200" font-size="24" text-anchor="end">3</text>
+  <text x="1535.46875" y="1391.34375" class="badge bm7" fill="#b86200" font-size="24" text-anchor="end">2</text>
+  <text x="1535.46875" y="1391.34375" class="badge bm11" fill="#b86200" font-size="24" text-anchor="end">1</text>
   </g>
   <g id="m12" class="module rm1 rm2 rm7" tabindex="0" data-module="github.com/ctx42/goldkit" data-level="2" data-dependents="">
   <rect x="1825.46875" y="1344" width="544.734375" height="231" rx="32" fill="none" stroke="#d3d3d3" stroke-width="2.5" stroke-dasharray="8 10"/>
   <text x="2097.8359375" y="1472.5078125" fill="#d3d3d3" font-size="36" text-anchor="middle">github.com/ctx42/goldkit</text>
+  <text x="2340.203125" y="1391.34375" class="badge bm1" fill="#b86200" font-size="24" text-anchor="end">3</text>
+  <text x="2340.203125" y="1391.34375" class="badge bm2" fill="#b86200" font-size="24" text-anchor="end">3</text>
+  <text x="2340.203125" y="1391.34375" class="badge bm7" fill="#b86200" font-size="24" text-anchor="end">2</text>
+  <text x="2340.203125" y="1391.34375" class="badge bm12" fill="#b86200" font-size="24" text-anchor="end">1</text>
   </g>
   <g id="m13" class="module rm1 rm19 rm22 rm3" tabindex="0" data-module="github.com/ctx42/jsontype" data-level="2" data-dependents="github.com/ctx42/nomix github.com/ctx42/verax">
   <rect x="2630.203125" y="1344" width="544.734375" height="231" rx="32" fill="none" stroke="#d3d3d3" stroke-width="2.5" stroke-dasharray="8 10"/>
   <text x="2902.5703125" y="1472.5078125" fill="#d3d3d3" font-size="36" text-anchor="middle">github.com/ctx42/jsontype</text>
+  <text x="3144.9375" y="1391.34375" class="badge bm1" fill="#b86200" font-size="24" text-anchor="end">3</text>
+  <text x="3144.9375" y="1391.34375" class="badge bm3" fill="#b86200" font-size="24" text-anchor="end">2</text>
+  <text x="3144.9375" y="1391.34375" class="badge bm13" fill="#b86200" font-size="24" text-anchor="end">1</text>
   </g>
   <g id="m14" class="module rm1 rm19 rm2 rm22 rm7" tabindex="0" data-module="github.com/ctx42/mirror" data-level="2" data-dependents="github.com/ctx42/nomix github.com/ctx42/verax">
   <rect x="3434.9375" y="1344" width="544.734375" height="231" rx="32" fill="none" stroke="#d3d3d3" stroke-width="2.5" stroke-dasharray="8 10"/>
   <text x="3707.3046875" y="1472.5078125" fill="#d3d3d3" font-size="36" text-anchor="middle">github.com/ctx42/mirror</text>
+  <text x="3949.671875" y="1391.34375" class="badge bm1" fill="#b86200" font-size="24" text-anchor="end">3</text>
+  <text x="3949.671875" y="1391.34375" class="badge bm2" fill="#b86200" font-size="24" text-anchor="end">3</text>
+  <text x="3949.671875" y="1391.34375" class="badge bm7" fill="#b86200" font-size="24" text-anchor="end">2</text>
+  <text x="3949.671875" y="1391.34375" class="badge bm14" fill="#b86200" font-size="24" text-anchor="end">1</text>
   </g>
   <g id="m15" class="module rm1 rm17 rm18 rm2 rm20 rm21 rm7" tabindex="0" data-module="github.com/ctx42/ring" data-level="2" data-dependents="github.com/ctx42/gmtask github.com/ctx42/gomake github.com/ctx42/modmap github.com/ctx42/xctr">
   <rect x="4239.671875" y="1344" width="544.734375" height="231" rx="32" fill="none" stroke="#d3d3d3" stroke-width="2.5" stroke-dasharray="8 10"/>
   <text x="4512.0390625" y="1472.5078125" fill="#d3d3d3" font-size="36" text-anchor="middle">github.com/ctx42/ring</text>
+  <text x="4754.40625" y="1391.34375" class="badge bm1" fill="#b86200" font-size="24" text-anchor="end">3</text>
+  <text x="4754.40625" y="1391.34375" class="badge bm2" fill="#b86200" font-size="24" text-anchor="end">3</text>
+  <text x="4754.40625" y="1391.34375" class="badge bm7" fill="#b86200" font-size="24" text-anchor="end">2</text>
+  <text x="4754.40625" y="1391.34375" class="badge bm15" fill="#b86200" font-size="24" text-anchor="end">1</text>
   </g>
   <g id="m16" class="module rm1 rm5" tabindex="0" data-module="github.com/ctx42/xftp" data-level="2" data-dependents="">
   <rect x="5044.40625" y="1344" width="544.734375" height="231" rx="32" fill="none" stroke="#d3d3d3" stroke-width="2.5" stroke-dasharray="8 10"/>
   <text x="5316.7734375" y="1472.5078125" fill="#d3d3d3" font-size="36" text-anchor="middle">github.com/ctx42/xftp</text>
+  <text x="5559.140625" y="1391.34375" class="badge bm1" fill="#b86200" font-size="24" text-anchor="end">3</text>
+  <text x="5559.140625" y="1391.34375" class="badge bm5" fill="#b86200" font-size="24" text-anchor="end">2</text>
+  <text x="5559.140625" y="1391.34375" class="badge bm16" fill="#b86200" font-size="24" text-anchor="end">1</text>
   </g>
   <g id="m17" class="module rm1 rm15 rm2 rm21 rm7 rm8" tabindex="0" data-module="github.com/ctx42/gomake" data-level="3" data-dependents="github.com/ctx42/gmtask">
   <rect x="216" y="772" width="544.734375" height="231" rx="32" fill="none" stroke="#d3d3d3" stroke-width="2.5" stroke-dasharray="8 10"/>
   <text x="488.3671875" y="900.5078125" fill="#d3d3d3" font-size="36" text-anchor="middle">github.com/ctx42/gomake</text>
+  <text x="730.734375" y="819.34375" class="badge bm1" fill="#b86200" font-size="24" text-anchor="end">4</text>
+  <text x="730.734375" y="819.34375" class="badge bm2" fill="#b86200" font-size="24" text-anchor="end">4</text>
+  <text x="730.734375" y="819.34375" class="badge bm7" fill="#b86200" font-size="24" text-anchor="end">3</text>
+  <text x="730.734375" y="819.34375" class="badge bm8" fill="#b86200" font-size="24" text-anchor="end">2</text>
+  <text x="730.734375" y="819.34375" class="badge bm15" fill="#b86200" font-size="24" text-anchor="end">2</text>
+  <text x="730.734375" y="819.34375" class="badge bm17" fill="#b86200" font-size="24" text-anchor="end">1</text>
   </g>
   <g id="m18" class="module rm1 rm15 rm2 rm7 rm8" tabindex="0" data-module="github.com/ctx42/modmap" data-level="3" data-dependents="">
   <rect x="1020.734375" y="772" width="544.734375" height="231" rx="32" fill="none" stroke="#d3d3d3" stroke-width="2.5" stroke-dasharray="8 10"/>
   <text x="1293.1015625" y="900.5078125" fill="#d3d3d3" font-size="36" text-anchor="middle">github.com/ctx42/modmap</text>
+  <text x="1535.46875" y="819.34375" class="badge bm1" fill="#b86200" font-size="24" text-anchor="end">4</text>
+  <text x="1535.46875" y="819.34375" class="badge bm2" fill="#b86200" font-size="24" text-anchor="end">4</text>
+  <text x="1535.46875" y="819.34375" class="badge bm7" fill="#b86200" font-size="24" text-anchor="end">3</text>
+  <text x="1535.46875" y="819.34375" class="badge bm8" fill="#b86200" font-size="24" text-anchor="end">2</text>
+  <text x="1535.46875" y="819.34375" class="badge bm15" fill="#b86200" font-size="24" text-anchor="end">2</text>
+  <text x="1535.46875" y="819.34375" class="badge bm18" fill="#b86200" font-size="24" text-anchor="end">1</text>
   </g>
   <g id="m19" class="module rm1 rm13 rm14 rm2 rm22 rm3 rm7 rm9" tabindex="0" data-module="github.com/ctx42/verax" data-level="3" data-dependents="github.com/ctx42/nomix">
   <rect x="1825.46875" y="772" width="544.734375" height="231" rx="32" fill="none" stroke="#d3d3d3" stroke-width="2.5" stroke-dasharray="8 10"/>
   <text x="2097.8359375" y="900.5078125" fill="#d3d3d3" font-size="36" text-anchor="middle">github.com/ctx42/verax</text>
+  <text x="2340.203125" y="819.34375" class="badge bm1" fill="#b86200" font-size="24" text-anchor="end">4</text>
+  <text x="2340.203125" y="819.34375" class="badge bm2" fill="#b86200" font-size="24" text-anchor="end">4</text>
+  <text x="2340.203125" y="819.34375" class="badge bm3" fill="#b86200" font-size="24" text-anchor="end">3</text>
+  <text x="2340.203125" y="819.34375" class="badge bm7" fill="#b86200" font-size="24" text-anchor="end">3</text>
+  <text x="2340.203125" y="819.34375" class="badge bm9" fill="#b86200" font-size="24" text-anchor="end">2</text>
+  <text x="2340.203125" y="819.34375" class="badge bm13" fill="#b86200" font-size="24" text-anchor="end">2</text>
+  <text x="2340.203125" y="819.34375" class="badge bm14" fill="#b86200" font-size="24" text-anchor="end">2</text>
+  <text x="2340.203125" y="819.34375" class="badge bm19" fill="#b86200" font-size="24" text-anchor="end">1</text>
   </g>
   <g id="m20" class="module rm1 rm11 rm15 rm2 rm7" tabindex="0" data-module="github.com/ctx42/xctr" data-level="3" data-dependents="">
   <rect x="2630.203125" y="772" width="544.734375" height="231" rx="32" fill="none" stroke="#d3d3d3" stroke-width="2.5" stroke-dasharray="8 10"/>
   <text x="2902.5703125" y="900.5078125" fill="#d3d3d3" font-size="36" text-anchor="middle">github.com/ctx42/xctr</text>
+  <text x="3144.9375" y="819.34375" class="badge bm1" fill="#b86200" font-size="24" text-anchor="end">4</text>
+  <text x="3144.9375" y="819.34375" class="badge bm2" fill="#b86200" font-size="24" text-anchor="end">4</text>
+  <text x="3144.9375" y="819.34375" class="badge bm7" fill="#b86200" font-size="24" text-anchor="end">3</text>
+  <text x="3144.9375" y="819.34375" class="badge bm11" fill="#b86200" font-size="24" text-anchor="end">2</text>
+  <text x="3144.9375" y="819.34375" class="badge bm15" fill="#b86200" font-size="24" text-anchor="end">2</text>
+  <text x="3144.9375" y="819.34375" class="badge bm20" fill="#b86200" font-size="24" text-anchor="end">1</text>
   </g>
   <g id="m21" class="module rm1 rm11 rm15 rm17 rm2 rm4 rm7 rm8" tabindex="0" data-module="github.com/ctx42/gmtask" data-level="4" data-dependents="">
   <rect x="216" y="200" width="544.734375" height="231" rx="32" fill="none" stroke="#d3d3d3" stroke-width="2.5" stroke-dasharray="8 10"/>
   <text x="488.3671875" y="328.5078125" fill="#d3d3d3" font-size="36" text-anchor="middle">github.com/ctx42/gmtask</text>
+  <text x="730.734375" y="247.34375" class="badge bm1" fill="#b86200" font-size="24" text-anchor="end">5</text>
+  <text x="730.734375" y="247.34375" class="badge bm2" fill="#b86200" font-size="24" text-anchor="end">5</text>
+  <text x="730.734375" y="247.34375" class="badge bm4" fill="#b86200" font-size="24" text-anchor="end">2</text>
+  <text x="730.734375" y="247.34375" class="badge bm7" fill="#b86200" font-size="24" text-anchor="end">4</text>
+  <text x="730.734375" y="247.34375" class="badge bm8" fill="#b86200" font-size="24" text-anchor="end">3</text>
+  <text x="730.734375" y="247.34375" class="badge bm11" fill="#b86200" font-size="24" text-anchor="end">2</text>
+  <text x="730.734375" y="247.34375" class="badge bm15" fill="#b86200" font-size="24" text-anchor="end">3</text>
+  <text x="730.734375" y="247.34375" class="badge bm17" fill="#b86200" font-size="24" text-anchor="end">2</text>
+  <text x="730.734375" y="247.34375" class="badge bm21" fill="#b86200" font-size="24" text-anchor="end">1</text>
   </g>
   <g id="m22" class="module rm1 rm13 rm14 rm19 rm2 rm3 rm7 rm9" tabindex="0" data-module="github.com/ctx42/nomix" data-level="4" data-dependents="">
   <rect x="1020.734375" y="200" width="544.734375" height="231" rx="32" fill="none" stroke="#d3d3d3" stroke-width="2.5" stroke-dasharray="8 10"/>
   <text x="1293.1015625" y="328.5078125" fill="#d3d3d3" font-size="36" text-anchor="middle">github.com/ctx42/nomix</text>
+  <text x="1535.46875" y="247.34375" class="badge bm1" fill="#b86200" font-size="24" text-anchor="end">5</text>
+  <text x="1535.46875" y="247.34375" class="badge bm2" fill="#b86200" font-size="24" text-anchor="end">5</text>
+  <text x="1535.46875" y="247.34375" class="badge bm3" fill="#b86200" font-size="24" text-anchor="end">4</text>
+  <text x="1535.46875" y="247.34375" class="badge bm7" fill="#b86200" font-size="24" text-anchor="end">4</text>
+  <text x="1535.46875" y="247.34375" class="badge bm9" fill="#b86200" font-size="24" text-anchor="end">3</text>
+  <text x="1535.46875" y="247.34375" class="badge bm13" fill="#b86200" font-size="24" text-anchor="end">3</text>
+  <text x="1535.46875" y="247.34375" class="badge bm14" fill="#b86200" font-size="24" text-anchor="end">3</text>
+  <text x="1535.46875" y="247.34375" class="badge bm19" fill="#b86200" font-size="24" text-anchor="end">2</text>
+  <text x="1535.46875" y="247.34375" class="badge bm22" fill="#b86200" font-size="24" text-anchor="end">1</text>
   </g>
   </svg>

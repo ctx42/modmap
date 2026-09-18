@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"html"
 	"io"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -54,6 +55,16 @@ const (
 		`svg:has(#%[1]s:focus) #%[1]s,` +
 		`svg:has(#%[1]s:focus) .%[2]s{opacity:1;}` + "\n"
 
+	// tplOrder reveals every order badge belonging to one module while
+	// that module is hovered or pinned, mirroring tplHover.
+	tplOrder = "" +
+		`svg:not(:has(.module:focus)):has(#%[1]s:hover) .%[2]s,` +
+		`svg:has(#%[1]s:focus) .%[2]s{visibility:visible;}` + "\n"
+
+	tplBadge = "" +
+		`<text x="%s" y="%s" class="%s" fill="%s" font-size="%s"` +
+		` text-anchor="end">%d</text>` + "\n"
+
 	tplBox = "" +
 		`<rect x="%s" y="%s" width="%s" height="%s"` +
 		` rx="%s" fill="none"` +
@@ -70,6 +81,7 @@ type layout struct {
 	height float64 // Canvas height.
 	boxW   float64 // Width of every module box.
 	baseY  float64 // Label baseline offset from the box top.
+	badgeY float64 // Badge baseline offset from the box top.
 	levels int     // Number of levels.
 }
 
@@ -99,15 +111,16 @@ func NewRenderer() (*Renderer, error) {
 }
 
 // Render writes the map of the graph as a standalone SVG document. Every box
-// carries the module path, its level, and the modules which have to be
-// updated when it changes.
+// carries the module path, its level, the modules which have to be updated
+// when it changes, and the order to update them in.
 func (rnd *Renderer) Render(grp *graph.Graph, dst io.Writer) error {
 	lay := rnd.layout(grp)
 	ids := moduleIDs(grp)
 	buf := &bytes.Buffer{}
-	rnd.head(buf, lay, hoverCSS(grp, ids))
+	rnd.head(buf, lay, interactCSS(grp, ids))
 	rnd.levels(buf, lay)
-	rnd.modules(buf, grp, lay, ids, relClasses(grp, ids))
+	cls, bdg := relClasses(grp, ids), badges(grp, ids)
+	rnd.modules(buf, grp, lay, ids, cls, bdg)
 	buf.WriteString("</svg>\n")
 	if _, err := dst.Write(buf.Bytes()); err != nil {
 		return fmt.Errorf("write map: %w", err)
@@ -127,6 +140,7 @@ func (rnd *Renderer) layout(grp *graph.Graph) layout {
 	}
 	lay.boxW = widest + 2*boxPad
 	lay.baseY = (boxHeight + rnd.fnt.CapHeight(textSize)) / 2
+	lay.badgeY = badgePad + rnd.fnt.CapHeight(badgeSize)
 
 	cols := float64(grp.Widest())
 	lay.width = 2*marginX + cols*lay.boxW + max(cols-1, 0)*gapX
@@ -192,6 +206,7 @@ func (rnd *Renderer) modules(
 	lay layout,
 	ids map[string]string,
 	cls map[string][]string,
+	bdg map[string][]badge,
 ) {
 
 	for lvl, nodes := range grp.Levels {
@@ -230,8 +245,33 @@ func (rnd *Renderer) modules(
 				num(textSize),
 				html.EscapeString(nod.Path),
 			)
+			rnd.orders(buf, lay, left, top, bdg[nod.Path])
 			buf.WriteString("</g>\n")
 		}
+	}
+}
+
+// orders writes the update order badges of one module box. Every badge is
+// hidden until the module whose change it belongs to is hovered or pinned,
+// so a box shows one digit at a time.
+func (rnd *Renderer) orders(
+	buf *bytes.Buffer,
+	lay layout,
+	left, top float64,
+	bdgs []badge,
+) {
+
+	for _, bad := range bdgs {
+		_, _ = fmt.Fprintf(
+			buf,
+			tplBadge,
+			num(left+lay.boxW-badgePad),
+			num(top+lay.badgeY),
+			classBadge+" "+classOrder+bad.pin,
+			colorBadge,
+			num(badgeSize),
+			bad.rank,
+		)
 	}
 }
 
@@ -272,9 +312,34 @@ func relClasses(grp *graph.Graph, ids map[string]string) map[string][]string {
 	return cls
 }
 
-// hoverCSS returns the style rules dimming every module but the hovered one
-// and the modules related to it.
-func hoverCSS(grp *graph.Graph, ids map[string]string) string {
+// badge is one update order digit drawn on a module box.
+type badge struct {
+	pin  string // Element id of the module the order belongs to.
+	rank int    // Round the module is updated in for that change.
+}
+
+// badges returns the order digits of every module keyed by module path. A
+// module carries one digit for every module whose change reaches it, its
+// own change included, so pinning any module shows the whole update order
+// of that change at once.
+func badges(grp *graph.Graph, ids map[string]string) map[string][]badge {
+	bdg := make(map[string][]badge, grp.Len())
+	for _, nodes := range grp.Levels {
+		for _, nod := range nodes {
+			ord := grp.Order(nod.Path)
+			pin := ids[nod.Path]
+			for _, pth := range slices.Sorted(maps.Keys(ord)) {
+				bdg[pth] = append(bdg[pth], badge{pin, ord[pth]})
+			}
+		}
+	}
+	return bdg
+}
+
+// interactCSS returns the style rules dimming every module but the hovered
+// one and the modules related to it, and revealing the order badges of the
+// hovered module.
+func interactCSS(grp *graph.Graph, ids map[string]string) string {
 	if grp.Len() == 0 {
 		return ""
 	}
@@ -284,6 +349,7 @@ func hoverCSS(grp *graph.Graph, ids map[string]string) string {
 		for _, nod := range nodes {
 			id := ids[nod.Path]
 			_, _ = fmt.Fprintf(buf, tplHover, id, classRel+id)
+			_, _ = fmt.Fprintf(buf, tplOrder, id, classOrder+id)
 		}
 	}
 	return buf.String()

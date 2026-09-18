@@ -6,8 +6,11 @@ Every module lands one level above the modules it depends on, so level zero
 holds the modules without dependencies and the levels read as the order in
 which a change has to be propagated. Each node also carries the modules
 reaching it, directly or through others: the set which has to be updated when
-that module changes. A dependency circle is an error, reported with the path
-around it.
+that module changes. `Order` puts that set in the order to work through it:
+the changed module first, and every other module one round after the
+highest-ordered module it relies on, so the modules sharing a number may be
+updated in any order. A dependency circle is an error, reported with the
+path around it.
 
 ```shell
 go get github.com/ctx42/modmap/pkg/graph
@@ -25,5 +28,10 @@ for level, nodes := range grp.Levels {
     for _, nod := range nodes {
         fmt.Println(level, nod.Path, nod.Dependents)
     }
+}
+
+// The round every module is updated in when "example.com/core" changes.
+for pth, round := range grp.Order("example.com/core") {
+    fmt.Println(round, pth)
 }
 ```

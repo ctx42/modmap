@@ -29,6 +29,8 @@ install to look at it.
   on and what relies on it — and dim everything else.
 - Click a module to pin that highlight; Tab reaches the modules from
   the keyboard.
+- Every module that has to change carries the round to change it in, so
+  modules sharing a digit can be updated in any order, or all at once.
 - Module path globs decide what is drawn, applied while scanning, so an
   excluded module is never even fetched.
 - Modules missing from disk are read from the Go module cache, and the
@@ -77,6 +79,22 @@ Here `github.com/ctx42/testkit` is pinned. Lit below it are the modules
 it relies on, lit above it are the modules that have to be updated when
 it changes, and everything unrelated is dimmed — `dkigo` among them,
 which shares dependencies with `testkit` but does not use it.
+
+The orange digit in the corner of a box is the round to update that
+module in. `testkit` itself reads 1, the modules that need nothing else
+updated first read 2, and so on; the modules below the pin need no
+update and carry no digit.
+
+![the update order badge up close](doc/modmap-badge.png)
+
+Four boxes of that same map up close: `testkit` pinned and reading 1,
+`mirror` and `ring` each reading 2 because neither waits for the other,
+and `xflag` dimmed and blank, having nothing to do with the change.
+
+The digit is not the level. `dkigo` sits on LEVEL 2 whichever module is
+pinned, but it reads 2 when `xdef` is pinned and 3 when `testing` is:
+the level counts from the bottom of the whole map, the digit counts
+from the module you pinned.
 
 `-o` is required: `modmap` never writes an SVG to a terminal.
 
@@ -153,6 +171,10 @@ holding the file, never against the working directory.
 - A module's level is one above the highest level among the modules it
   requires, and the modules on a level are sorted by module path, so two
   runs over the same code produce the same file.
+- The digit is computed per pinned module: one above the highest digit
+  among the modules it requires that also have to change, counting only
+  the modules that pin reaches. Equal digits therefore mean the work is
+  independent.
 
 ## Packages
 

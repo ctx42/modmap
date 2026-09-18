@@ -66,6 +66,43 @@ func (grp *Graph) Widest() int {
 	return widest
 }
 
+// Order returns the update order of the modules which have to change when the
+// module at pth changes, keyed by module path. The changed module comes
+// first, at one, and every other module comes one round after the highest
+// ordered module it relies on, so the modules sharing a number may be updated
+// in any order. It returns nil when the graph has no such module.
+func (grp *Graph) Order(pth string) map[string]int {
+	nod, ok := grp.nodes[pth]
+	if !ok {
+		return nil
+	}
+	set := make(map[string]bool, len(nod.Dependents)+1)
+	set[pth] = true
+	for _, dep := range nod.Dependents {
+		set[dep] = true
+	}
+
+	ord := map[string]int{pth: 1}
+	var rank func(cur string) int
+	rank = func(cur string) int {
+		if num, has := ord[cur]; has {
+			return num
+		}
+		var top int
+		for _, dep := range grp.nodes[cur].Deps {
+			if set[dep] {
+				top = max(top, rank(dep))
+			}
+		}
+		ord[cur] = top + 1
+		return ord[cur]
+	}
+	for _, dep := range nod.Dependents {
+		_ = rank(dep)
+	}
+	return ord
+}
+
 // paths returns the sorted module paths of every node in the graph.
 func (grp *Graph) paths() []string {
 	return slices.Sorted(maps.Keys(grp.nodes))

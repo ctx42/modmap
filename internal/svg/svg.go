@@ -15,6 +15,8 @@ const (
 	marginX   = 216.0  // Left and right canvas margin.
 	marginY   = 200.0  // Top and bottom canvas margin.
 	textSize  = 36.0   // Size of a module label.
+	badgeSize = 24.0   // Size of an order badge, two thirds of a label.
+	badgePad  = 30.0   // Space between a badge and the box border.
 	levelSize = 96.0   // Size of a level label.
 	strokeW   = 2.5    // Width of every stroke.
 	dashes    = "8 10" // Dash pattern of every stroke.
@@ -24,11 +26,15 @@ const (
 // script, so the map stays interactive wherever style sheets are honored.
 // Hovering a module lights it and every module related to it — the ones it
 // relies on and the ones relying on it; clicking one pins that light by
-// focusing the module, and clicking the canvas lets it go.
+// focusing the module, and clicking the canvas lets it go. The lit modules
+// relying on it also show the round they are updated in, the changed module
+// itself counting as the first one.
 const (
 	idPrefix    = "m"      // Prefix of a module element id.
 	classModule = "module" // Class every module group carries.
 	classRel    = "r"      // Prefix of a related-module class.
+	classBadge  = "badge"  // Class every order badge carries.
+	classOrder  = "b"      // Prefix of an update order class.
 
 	// cssBase dims every module while one is hovered or pinned; the rules
 	// generated per module light that module and the ones related to it
@@ -38,6 +44,7 @@ const (
 		".module rect{pointer-events:all;}\n" +
 		".module:focus{outline:none;}\n" +
 		".module:focus rect{stroke-dasharray:none;}\n" +
+		".badge{visibility:hidden;}\n" +
 		"svg:has(.module:hover) .module," +
 		"svg:has(.module:focus) .module{opacity:" + dimOpacity + ";}\n"
 
@@ -48,9 +55,10 @@ const (
 
 // Map colors, taken from the reference drawing.
 const (
-	colorBg        = "#121212" // Canvas background.
-	colorBox       = "#d3d3d3" // Module box border.
-	colorLabel     = "#d3d3d3" // Module label.
-	colorLevel     = "#154162" // Level separator.
-	colorLevelText = "#b86200" // Level label.
+	colorBg        = "#121212"      // Canvas background.
+	colorBox       = "#d3d3d3"      // Module box border.
+	colorLabel     = "#d3d3d3"      // Module label.
+	colorLevel     = "#154162"      // Level separator.
+	colorLevelText = "#b86200"      // Level label.
+	colorBadge     = colorLevelText // Update order badge.
 )

@@ -165,6 +165,120 @@ func Test_Graph_Len(t *testing.T) {
 	assert.Equal(t, 2, have)
 }
 
+func Test_Graph_Order(t *testing.T) {
+	t.Run("the changed module comes first", func(t *testing.T) {
+		// --- Given ---
+		mods := newMods(map[string][]string{
+			"a": {"b"},
+			"b": {"c"},
+			"c": nil,
+		})
+		grp := must.Value(New(mods))
+
+		// --- When ---
+		have := grp.Order("c")
+
+		// --- Then ---
+		want := map[string]int{"c": 1, "b": 2, "a": 3}
+		assert.Equal(t, want, have)
+	})
+
+	t.Run("the longest path wins over a shortcut", func(t *testing.T) {
+		// --- Given ---
+		mods := newMods(map[string][]string{
+			"a": {"p"},
+			"b": {"p"},
+			"c": {"a", "b", "p"},
+			"p": nil,
+		})
+		grp := must.Value(New(mods))
+
+		// --- When ---
+		have := grp.Order("p")
+
+		// --- Then ---
+		want := map[string]int{"p": 1, "a": 2, "b": 2, "c": 3}
+		assert.Equal(t, want, have)
+	})
+
+	t.Run("the modules the change relies on are left out", func(t *testing.T) {
+		// --- Given ---
+		mods := newMods(map[string][]string{
+			"app":  {"lib"},
+			"lib":  {"core"},
+			"core": nil,
+		})
+		grp := must.Value(New(mods))
+
+		// --- When ---
+		have := grp.Order("lib")
+
+		// --- Then ---
+		assert.Equal(t, map[string]int{"lib": 1, "app": 2}, have)
+	})
+
+	t.Run("a module without dependents is alone", func(t *testing.T) {
+		// --- Given ---
+		grp := must.Value(New(newMods(map[string][]string{"a": {"b"}})))
+
+		// --- When ---
+		have := grp.Order("a")
+
+		// --- Then ---
+		assert.Equal(t, map[string]int{"a": 1}, have)
+	})
+
+	t.Run("repeated calls agree", func(t *testing.T) {
+		// --- Given ---
+		mods := newMods(map[string][]string{"a": {"b"}, "b": nil})
+		grp := must.Value(New(mods))
+
+		// --- When ---
+		have := grp.Order("b")
+
+		// --- Then ---
+		assert.Equal(t, grp.Order("b"), have)
+	})
+
+	t.Run("unknown module", func(t *testing.T) {
+		// --- Given ---
+		grp := must.Value(New(newMods(map[string][]string{"a": nil})))
+
+		// --- When ---
+		have := grp.Order("b")
+
+		// --- Then ---
+		assert.Nil(t, have)
+	})
+
+	t.Run("every module comes after the ones it relies on", func(t *testing.T) {
+		// --- Given ---
+		deps := loadDeps(t, "testdata/ctx42_modules.json")
+		grp := must.Value(New(newMods(deps)))
+
+		// --- When ---
+		have := make(map[string]map[string]int, grp.Len())
+		for _, pth := range grp.paths() {
+			have[pth] = grp.Order(pth)
+		}
+
+		// --- Then ---
+		assert.Len(t, grp.Len(), have)
+		for pin, ord := range have {
+			assert.Equal(t, 1, ord[pin])
+			for pth, num := range ord {
+				nod, _ := grp.Node(pth)
+				for _, dep := range nod.Deps {
+					if _, ok := ord[dep]; !ok {
+						continue
+					}
+					assert.Greater(t, ord[dep], num)
+				}
+			}
+		}
+	})
+}
+
 func Test_Graph_Widest(t *testing.T) {
 	t.Run("the busiest level counts", func(t *testing.T) {
 		// --- Given ---
