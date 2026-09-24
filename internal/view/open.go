@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: (c) 2026 Rafal Zajac
 // SPDX-License-Identifier: MIT
 
-package web
+package view
 
 import (
 	"errors"
@@ -28,8 +28,8 @@ func openWith(cmds [][]string, url string) error {
 			continue
 		}
 		args := append(append([]string{}, cmd[1:]...), url)
-		// The browser has to outlive the run, so it is started without
-		// the context which stops the server.
+		// The browser has to outlive the run, so it is started
+		// without a context.
 		prc := exec.Command(pth, args...) //nolint:gosec,noctx
 		if err = prc.Start(); err != nil {
 			return fmt.Errorf("start %s: %w", cmd[0], err)

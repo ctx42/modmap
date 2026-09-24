@@ -39,8 +39,8 @@ install to look at it.
   being drawn as something they are not.
 - One SVG file with the font embedded and the dependency data in
   `data-*` attributes; it carries no script at all.
-- `--web` serves the map in a browser, pan and zoom included, without
-  writing anything to disk.
+- `--web` opens the map in a browser, pan and zoom included, with no
+  server to stop and no file to name.
 
 ## Prerequisites
 
@@ -98,7 +98,7 @@ pinned, but it reads 2 when `xdef` is pinned and 3 when `testing` is:
 the level counts from the bottom of the whole map, the digit counts
 from the module you pinned.
 
-`-o` is required unless the map is served with `--web`: `modmap`
+`-o` is required unless the map is opened with `--web`: `modmap`
 never writes an SVG to a terminal.
 
 ### Filtering
@@ -118,27 +118,29 @@ the closure has to come from the cache or the network, and much wider.
 `modmap` asks before rendering a level of more than 20 modules; `--yes`
 answers for it in scripts.
 
-### Looking without saving
+### Looking without keeping
 
-`--web` serves the map and opens it in a browser instead of writing a
-file, the way `go tool pprof -http` does. The page pans with a drag,
-zooms with the wheel, fits again with `0`, and hovering and pinning work
-exactly as they do in the file:
+`--web` opens the map in a browser instead of writing it where you say.
+The page pans with a drag, zooms with the wheel, fits again with `0`,
+and hovering and pinning work exactly as they do in the file:
 
 ```shell
 modmap --web --include 'github.com/ctx42/*' ~/src/ctx42
 ```
 
-The server picks a free port on the loopback interface and keeps running
-until Ctrl-C. Give it an address to pin one: `--web=:8080` for every
-interface, `--web=8080` for the loopback, `--web=127.0.0.1:8080` in
-full. The map is never written to disk, so `--web` and `-o` cannot be
-combined; the served page links the SVG at `/map.svg` when you want to
-keep it after all.
+The page and the map it shows are written under the system temporary
+directory — `/tmp/modmap` on Linux — and the path of the page is
+printed. Nothing is served: the browser opens the page from disk and
+`modmap` is done, so there is no port to pick and no Ctrl-C to press.
+Every run rewrites the same two files, named after the map, so the pages
+never pile up and reloading the page after a run shows the new map.
+Because the destination is not yours to pick, `--web` and `-o` cannot be
+combined; the page links the SVG written beside it when you want to keep
+the map after all.
 
-With a configuration file, `--web` serves one named map:
+With a configuration file, `--web` opens one named map:
 `modmap --web -c modmap.yaml ctx42`. Naming none, or naming several, is
-an error — only one map can be served at a time.
+an error — only one map can be opened at a time.
 
 ### Several maps at once
 
@@ -162,7 +164,7 @@ Command line options:
 | Option          | Meaning                                          |
 |-----------------|--------------------------------------------------|
 | `-o, --out`     | SVG file to write; required without `-c`/`--web` |
-| `--web[=addr]`  | serve the map in a browser instead of writing it |
+| `--web`         | open the map in a browser instead of writing it  |
 | `-i, --include` | draw only modules matching the glob; repeatable  |
 | `-e, --exclude` | never draw modules matching the glob; repeatable |
 | `-c, --config`  | configuration file naming the maps to generate   |

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: (c) 2026 Rafal Zajac
 // SPDX-License-Identifier: MIT
 
-package web
+package view
 
 import (
 	"os/exec"
@@ -18,7 +18,7 @@ func Test_open(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
 
 	// --- When ---
-	err := open("http://127.0.0.1:1/")
+	err := open("file:///tmp/modmap/map.html")
 
 	// --- Then ---
 	assert.ErrorIs(t, ErrNoBrowser, err)
@@ -33,7 +33,7 @@ func Test_openWith(t *testing.T) {
 		cmds := [][]string{{"modmap-no-such-opener"}, {"true"}}
 
 		// --- When ---
-		err := openWith(cmds, "http://127.0.0.1:1/")
+		err := openWith(cmds, "file:///tmp/modmap/map.html")
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -44,7 +44,7 @@ func Test_openWith(t *testing.T) {
 		cmds := [][]string{{"modmap-no-such-opener"}}
 
 		// --- When ---
-		err := openWith(cmds, "http://127.0.0.1:1/")
+		err := openWith(cmds, "file:///tmp/modmap/map.html")
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrNoBrowser, err)
@@ -52,7 +52,7 @@ func Test_openWith(t *testing.T) {
 
 	t.Run("error - no commands at all", func(t *testing.T) {
 		// --- When ---
-		err := openWith(nil, "http://127.0.0.1:1/")
+		err := openWith(nil, "file:///tmp/modmap/map.html")
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrNoBrowser, err)

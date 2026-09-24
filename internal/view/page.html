@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- An empty icon, so the browser never asks for one. -->
+<link rel="icon" href="data:,">
 <title>{{.Title}}</title>
 <style>
 html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#121212;}
@@ -17,7 +19,7 @@ pointer-events:none;user-select:none;}
 <body>
 <div id="map">{{.Map}}</div>
 <div id="hint">drag to pan &middot; scroll to zoom &middot; 0 to fit
-&middot; <a href="map.svg" download>save the SVG</a></div>
+&middot; <a href="{{.Link}}" download>save the SVG</a></div>
 <script>
 (function () {
 	var box = document.getElementById('map');

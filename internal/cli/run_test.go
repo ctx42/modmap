@@ -5,16 +5,14 @@ package cli
 
 import (
 	"context"
-	"io"
-	"net/http"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/ctx42/ring/pkg/ring/ringtest"
 	"github.com/ctx42/testing/pkg/assert"
-	"github.com/ctx42/testing/pkg/must"
 	"github.com/ctx42/testkit/pkg/oskit"
+
+	"github.com/ctx42/modmap/internal/view"
 )
 
 func Test_run(t *testing.T) {
@@ -277,45 +275,18 @@ func Test_spec_title(t *testing.T) {
 	})
 }
 
-func Test_serve(t *testing.T) {
-	t.Run("the map is served until the context is done", func(t *testing.T) {
+func Test_show(t *testing.T) {
+	t.Run("the map is written and opened in a browser", func(t *testing.T) {
 		// --- Given ---
-		ctx, cancel := context.WithCancel(t.Context())
-		defer cancel()
+		tmp := t.TempDir()
 		src := t.TempDir()
 		writeMod(t, "module example.com/a\n", src, "a")
-		urls := make(chan string, 1)
+		// os.TempDir reads the process environment, which no ring reaches.
+		t.Setenv("TMPDIR", tmp)
+		var opened string
 		cfg := &config{
-			web:     true,
-			webAddr: "127.0.0.1:0",
-			opener:  func(url string) error { urls <- url; return nil },
-		}
-		spc := spec{Dirs: []string{src}}
-		tst := ringtest.New(t).WetStderr()
-		rng := tst.Ring()
-		done := make(chan error, 1)
-
-		// --- When ---
-		go func() { done <- generate(ctx, rng, cfg, spc) }()
-
-		// --- Then ---
-		url := <-urls
-		assert.Contain(t, "http://127.0.0.1:", url)
-		assert.Contain(t, "example.com/a", fetch(t, url))
-		assert.Contain(t, "serving "+filepath.Base(src), tst.Stderr())
-
-		cancel()
-		assert.NoError(t, <-done)
-	})
-
-	t.Run("error - the address is taken", func(t *testing.T) {
-		// --- Given ---
-		src := t.TempDir()
-		writeMod(t, "module example.com/a\n", src, "a")
-		cfg := &config{
-			web:     true,
-			webAddr: "256.256.256.256:99999",
-			opener:  func(string) error { return nil },
+			web:    true,
+			opener: func(url string) error { opened = url; return nil },
 		}
 		spc := spec{Dirs: []string{src}}
 		tst := ringtest.New(t).WetStderr()
@@ -325,21 +296,35 @@ func Test_serve(t *testing.T) {
 		err := generate(t.Context(), rng, cfg, spc)
 
 		// --- Then ---
-		assert.ErrorContain(t, "listen on 256.256.256.256:99999", err)
-		assert.Contain(t, "graph has 1 modules", tst.Stderr())
-	})
-}
+		assert.NoError(t, err)
 
-// fetch returns the body of the URL.
-func fetch(t *testing.T, url string) string {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
-	defer cancel()
-	req := must.Value(
-		http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody),
-	)
-	//nolint:bodyclose // The body is closed below.
-	rsp := must.Value(http.DefaultClient.Do(req))
-	defer func() { _ = rsp.Body.Close() }()
-	return string(must.Value(io.ReadAll(rsp.Body)))
+		pth := filepath.Join(tmp, "modmap", filepath.Base(src)+".html")
+		assert.Equal(t, "file://"+pth, opened)
+		assert.Contain(t, "example.com/a", oskit.ReadFileStr(t, pth))
+		assert.Contain(t, "map written to "+pth, tst.Stderr())
+	})
+
+	t.Run("error - no browser to open the map in", func(t *testing.T) {
+		// --- Given ---
+		tmp := t.TempDir()
+		src := t.TempDir()
+		writeMod(t, "module example.com/a\n", src, "a")
+		t.Setenv("TMPDIR", tmp)
+		cfg := &config{
+			web:    true,
+			opener: func(string) error { return view.ErrNoBrowser },
+		}
+		spc := spec{Dirs: []string{src}}
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+
+		// --- When ---
+		err := generate(t.Context(), rng, cfg, spc)
+
+		// --- Then ---
+		assert.ErrorIs(t, view.ErrNoBrowser, err)
+
+		pth := filepath.Join(tmp, "modmap", filepath.Base(src)+".html")
+		assert.Contain(t, "map written to "+pth, tst.Stderr())
+	})
 }

@@ -14,7 +14,7 @@ import (
 
 	"github.com/ctx42/modmap/internal/conf"
 	"github.com/ctx42/modmap/internal/svg"
-	"github.com/ctx42/modmap/internal/web"
+	"github.com/ctx42/modmap/internal/view"
 	"github.com/ctx42/modmap/pkg/graph"
 	"github.com/ctx42/modmap/pkg/mod"
 )
@@ -71,11 +71,11 @@ type spec struct {
 	Exclude []string
 
 	// Out is the absolute path of the SVG file to write. It is empty
-	// when the map is served instead of written.
+	// when the map is opened in a browser instead.
 	Out string
 }
 
-// title returns the name the map is shown under when it is served.
+// title returns the name the map is shown under in a browser.
 func (spc spec) title() string {
 	if spc.Name != "" {
 		return spc.Name
@@ -87,7 +87,7 @@ func (spc spec) title() string {
 }
 
 // generate builds the map described by spc and either writes it to its
-// output file or serves it in a browser. It returns nil without writing
+// output file or opens it in a browser. It returns nil without writing
 // anything when the user declines to render a map with a very wide level.
 func generate(
 	ctx context.Context,
@@ -128,14 +128,15 @@ func generate(
 		return nil
 	}
 	if cfg.web {
-		return serve(ctx, logf, cfg, spc.title(), grp)
+		return show(logf, cfg, spc.title(), grp)
 	}
 	return write(grp, spc.Out)
 }
 
-// serve renders the graph and serves it in a browser until ctx is done.
-func serve(
-	ctx context.Context,
+// show renders the graph into a page under the system temporary directory
+// and opens it in a browser. The page outlives the run, so its path is
+// reported whether or not the browser could be opened.
+func show(
 	logf func(format string, args ...any),
 	cfg *config,
 	title string,
@@ -150,8 +151,11 @@ func serve(
 	if err = rnd.Render(grp, buf); err != nil {
 		return err
 	}
-	srv := web.New(title, buf.Bytes(), logf, cfg.opener)
-	return srv.Serve(ctx, cfg.webAddr)
+	pth, err := view.Open(title, buf.Bytes(), cfg.opener)
+	if pth != "" {
+		logf("map written to %s", pth)
+	}
+	return err
 }
 
 // write renders the graph into the file at pth.
