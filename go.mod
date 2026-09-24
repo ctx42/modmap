@@ -11,7 +11,7 @@ require (
 
 require (
 	github.com/ctx42/goldkit v0.19.0
-	github.com/ctx42/testkit v0.11.0
+	github.com/ctx42/testkit v0.15.0
 	github.com/goccy/go-yaml v1.19.2
 	golang.org/x/image v0.46.0
 	golang.org/x/text v0.42.0 // indirect
