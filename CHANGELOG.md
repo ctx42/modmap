@@ -1,3 +1,7 @@
+## v0.2.0 (Tue, 29 Sep 2026 07:01:28 UTC)
+- feat(web)!: open the map from a file instead of serving it.
+- ci: run the tests on every push and pull request.
+
 ## v0.1.0 (Fri, 18 Sep 2026 09:11:06 UTC)
 - feat: add modmap, a Go module dependency map.
 - docs: add the project README.
