@@ -444,7 +444,8 @@ func Test_goFetcher_fetch(t *testing.T) {
 		// --- Then ---
 		var exe *exec.ExitError
 		assert.ErrorAs(t, &exe, err)
-		assert.ErrorContain(t, "query example.com/nope@v1.0.0", err)
+		want := "^query example.com/nope@v1.0.0: .*GOPROXY=off"
+		assert.ErrorRegexp(t, want, err)
 		assert.Nil(t, have)
 	})
 }
