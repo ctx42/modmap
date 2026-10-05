@@ -274,6 +274,9 @@ func (gof *goFetcher) fetch(
 	cmd.Env = gof.env
 	out, err := cmd.Output()
 	if err != nil {
+		if ctx.Err() != nil {
+			return nil, fmt.Errorf("query %s: %w", arg, ctx.Err())
+		}
 		var exe *exec.ExitError
 		if errors.As(err, &exe) && len(exe.Stderr) > 0 {
 			msg := strings.TrimSpace(string(exe.Stderr))

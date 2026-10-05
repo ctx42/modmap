@@ -9,9 +9,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
+	"time"
 
 	"github.com/ctx42/testing/pkg/assert"
+	"github.com/ctx42/testing/pkg/must"
 	"github.com/ctx42/testkit/pkg/oskit"
 )
 
@@ -427,6 +430,31 @@ func Test_newGoFetcher(t *testing.T) {
 }
 
 func Test_goFetcher_fetch(t *testing.T) {
+	t.Run("error - context done while querying", func(t *testing.T) {
+		// --- Given ---
+		if runtime.GOOS == "windows" {
+			t.Skip("the fake go command is a shell script")
+		}
+
+		ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
+		t.Cleanup(cancel)
+
+		dir := t.TempDir()
+		oskit.Create(t, "#!/bin/sh\nexec sleep 5\n", dir, "go")
+		must.Nil(os.Chmod(filepath.Join(dir, "go"), 0o700))
+		t.Setenv("PATH", dir)
+
+		gof := must.Value(newGoFetcher(nil))
+		t.Cleanup(func() { _ = gof.close() })
+
+		// --- When ---
+		have, err := gof.fetch(ctx, "example.com/a", "v1.0.0")
+
+		// --- Then ---
+		assert.ErrorIs(t, context.DeadlineExceeded, err)
+		assert.Nil(t, have)
+	})
+
 	t.Run("error - module is not available offline", func(t *testing.T) {
 		// --- Given ---
 		env := append(os.Environ(), "GOPROXY=off", "GOFLAGS=-mod=mod")
