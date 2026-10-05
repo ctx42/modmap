@@ -323,3 +323,95 @@ func Test_Graph_Widest(t *testing.T) {
 		assert.Equal(t, 0, have)
 	})
 }
+
+func Test_Graph_paths(t *testing.T) {
+	// --- Given ---
+	grp := newGraph(map[string][]string{"c": nil, "a": nil, "b": nil})
+
+	// --- When ---
+	have := grp.paths()
+
+	// --- Then ---
+	assert.Equal(t, []string{"a", "b", "c"}, have)
+}
+
+func Test_Graph_setLevels(t *testing.T) {
+	t.Run("chain", func(t *testing.T) {
+		// --- Given ---
+		grp := newGraph(map[string][]string{"a": {"b"}, "b": {"c"}, "c": nil})
+
+		// --- When ---
+		grp.setLevels()
+
+		// --- Then ---
+		assert.Equal(t, 2, grp.nodes["a"].Level)
+		assert.Equal(t, 1, grp.nodes["b"].Level)
+		assert.Equal(t, 0, grp.nodes["c"].Level)
+	})
+
+	t.Run("diamond", func(t *testing.T) {
+		// --- Given ---
+		grp := newGraph(map[string][]string{
+			"a": {"b", "c"},
+			"b": {"d"},
+			"c": {"d"},
+			"d": nil,
+		})
+
+		// --- When ---
+		grp.setLevels()
+
+		// --- Then ---
+		assert.Equal(t, 2, grp.nodes["a"].Level)
+		assert.Equal(t, 1, grp.nodes["b"].Level)
+		assert.Equal(t, 1, grp.nodes["c"].Level)
+		assert.Equal(t, 0, grp.nodes["d"].Level)
+	})
+}
+
+func Test_Graph_setDependents(t *testing.T) {
+	// --- Given ---
+	grp := newGraph(map[string][]string{
+		"a": {"b", "c"},
+		"b": {"d"},
+		"c": {"d"},
+		"d": nil,
+	})
+
+	// --- When ---
+	grp.setDependents()
+
+	// --- Then ---
+	assert.Empty(t, grp.nodes["a"].Dependents)
+	assert.Equal(t, []string{"a"}, grp.nodes["b"].Dependents)
+	assert.Equal(t, []string{"a"}, grp.nodes["c"].Dependents)
+	assert.Equal(t, []string{"a", "b", "c"}, grp.nodes["d"].Dependents)
+}
+
+func Test_Graph_group(t *testing.T) {
+	t.Run("levels sorted by path", func(t *testing.T) {
+		// --- Given ---
+		grp := newGraph(map[string][]string{"c": nil, "a": nil, "b": nil})
+		grp.nodes["b"].Level = 1
+
+		// --- When ---
+		grp.group()
+
+		// --- Then ---
+		assert.Len(t, 2, grp.Levels)
+		want := []*Node{grp.nodes["a"], grp.nodes["c"]}
+		assert.Equal(t, want, grp.Levels[0])
+		assert.Equal(t, []*Node{grp.nodes["b"]}, grp.Levels[1])
+	})
+
+	t.Run("empty graph", func(t *testing.T) {
+		// --- Given ---
+		grp := newGraph(nil)
+
+		// --- When ---
+		grp.group()
+
+		// --- Then ---
+		assert.Nil(t, grp.Levels)
+	})
+}
