@@ -32,8 +32,14 @@ var (
 	// ErrNoDirs is returned for a map without directories to scan.
 	ErrNoDirs = errors.New("map without directories")
 
+	// ErrEmptyDir is returned for a map listing an empty directory.
+	ErrEmptyDir = errors.New("map with an empty directory")
+
 	// ErrNoOut is returned for a map without an output file.
 	ErrNoOut = errors.New("map without an output file")
+
+	// ErrDupOut is returned when two maps write the same output file.
+	ErrDupOut = errors.New("duplicate map output file")
 
 	// ErrUnkMap is returned when a requested map is not declared.
 	ErrUnkMap = errors.New("unknown map")
@@ -78,10 +84,10 @@ func Load(pth string) (*Config, error) {
 	if err = yaml.UnmarshalWithOptions(data, cfg, opt); err != nil {
 		return nil, fmt.Errorf("parse configuration: %w", err)
 	}
+	cfg.resolve(filepath.Dir(pth))
 	if err = cfg.validate(); err != nil {
 		return nil, err
 	}
-	cfg.resolve(filepath.Dir(pth))
 	return cfg, nil
 }
 
@@ -118,27 +124,37 @@ func (cfg *Config) Names() []string {
 	return names
 }
 
-// validate reports the first problem making the configuration unusable.
+// validate reports the first problem making the configuration unusable. The
+// paths are compared as they are, so they are resolved beforehand.
 func (cfg *Config) validate() error {
 	if len(cfg.Maps) == 0 {
 		return ErrNoMaps
 	}
-	seen := make(map[string]bool, len(cfg.Maps))
+	names := make(map[string]bool, len(cfg.Maps))
+	outs := make(map[string]string, len(cfg.Maps))
 	for _, mp := range cfg.Maps {
 		switch {
 		case mp.Name == "":
 			return ErrNoName
 
-		case seen[mp.Name]:
+		case names[mp.Name]:
 			return fmt.Errorf("%w: %s", ErrDupName, mp.Name)
 
 		case len(mp.Dirs) == 0:
 			return fmt.Errorf("%w: %s", ErrNoDirs, mp.Name)
 
+		case slices.Contains(mp.Dirs, ""):
+			return fmt.Errorf("%w: %s", ErrEmptyDir, mp.Name)
+
 		case mp.Out == "":
 			return fmt.Errorf("%w: %s", ErrNoOut, mp.Name)
+
+		case outs[mp.Out] != "":
+			format := "%w: %s and %s write %s"
+			return fmt.Errorf(format, ErrDupOut, outs[mp.Out], mp.Name, mp.Out)
 		}
-		seen[mp.Name] = true
+		names[mp.Name] = true
+		outs[mp.Out] = mp.Name
 
 		for _, glob := range slices.Concat(mp.Include, mp.Exclude) {
 			if err := mod.ValidateGlob(glob); err != nil {
@@ -150,7 +166,7 @@ func (cfg *Config) validate() error {
 }
 
 // resolve makes every relative path in the configuration absolute by
-// resolving it against dir.
+// resolving it against dir. Empty paths stay empty.
 func (cfg *Config) resolve(dir string) {
 	for idx, mp := range cfg.Maps {
 		for jdx, pth := range mp.Dirs {
@@ -160,11 +176,14 @@ func (cfg *Config) resolve(dir string) {
 	}
 }
 
-// absPath returns pth as an absolute path, resolving a relative one against
-// dir.
+// absPath returns pth as a clean absolute path, resolving a relative one
+// against dir. An empty pth stays empty.
 func absPath(dir, pth string) string {
+	if pth == "" {
+		return ""
+	}
 	if filepath.IsAbs(pth) {
-		return pth
+		return filepath.Clean(pth)
 	}
 	return filepath.Join(dir, pth)
 }

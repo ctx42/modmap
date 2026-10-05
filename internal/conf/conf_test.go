@@ -85,6 +85,27 @@ func Test_Load(t *testing.T) {
 		assert.Nil(t, have)
 	})
 
+	t.Run("error - same output spelled differently", func(t *testing.T) {
+		// --- Given ---
+		pth := writeConf(t, ""+
+			"maps:\n"+
+			"  - name: a\n"+
+			"    dirs: [src]\n"+
+			"    out: a.svg\n"+
+			"  - name: b\n"+
+			"    dirs: [src]\n"+
+			"    out: ./a.svg\n",
+			t.TempDir(),
+		)
+
+		// --- When ---
+		have, err := Load(pth)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrDupOut, err)
+		assert.Nil(t, have)
+	})
+
 	t.Run("error - unknown key", func(t *testing.T) {
 		// --- Given ---
 		pth := writeConf(t, ""+
@@ -198,9 +219,22 @@ func Test_Config_validate_tabular(t *testing.T) {
 		{"duplicate name", []Map{valid, valid}, ErrDupName},
 		{"no dirs", []Map{{Name: "a", Out: "/out.svg"}}, ErrNoDirs},
 		{
+			"empty dir",
+			[]Map{{Name: "a", Dirs: []string{""}, Out: "/out.svg"}},
+			ErrEmptyDir,
+		},
+		{
 			"no output",
 			[]Map{{Name: "a", Dirs: []string{"/src"}}},
 			ErrNoOut,
+		},
+		{
+			"duplicate output",
+			[]Map{
+				valid,
+				{Name: "b", Dirs: []string{"/src"}, Out: "/out.svg"},
+			},
+			ErrDupOut,
 		},
 		{
 			"malformed include glob",
