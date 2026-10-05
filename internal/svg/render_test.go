@@ -184,6 +184,106 @@ func Test_Renderer_layout(t *testing.T) {
 	})
 }
 
+func Test_Renderer_head(t *testing.T) {
+	// --- Given ---
+	rnd := must.Value(NewRenderer())
+	buf := &bytes.Buffer{}
+
+	// --- When ---
+	rnd.head(buf, layout{width: 100, height: 50}, ".x{}\n")
+
+	// --- Then ---
+	have := buf.String()
+	assert.Contain(t, `viewBox="0 0 100 50" width="100" height="50">`, have)
+	assert.Contain(t, `@font-face{font-family:"Modmap Sans";`, have)
+	assert.Contain(t, ".x{}\n</style></defs>", have)
+	assert.Contain(t, `<rect x="0" y="0" width="100" height="50"`, have)
+}
+
+func Test_Renderer_levels(t *testing.T) {
+	// --- Given ---
+	rnd := must.Value(NewRenderer())
+	buf := &bytes.Buffer{}
+
+	// --- When ---
+	rnd.levels(buf, layout{width: 100, height: 300, levels: 2})
+
+	// --- Then ---
+	have := buf.String()
+	assert.Equal(t, 2, strings.Count(have, "<line "))
+	assert.Contain(t, ">LEVEL 0</text>", have)
+	assert.Contain(t, ">LEVEL 1</text>", have)
+}
+
+func Test_Renderer_separator(t *testing.T) {
+	// --- Given ---
+	rnd := must.Value(NewRenderer())
+	buf := &bytes.Buffer{}
+
+	// --- When ---
+	rnd.separator(buf, "1", "2", 3.5)
+
+	// --- Then ---
+	want := "" +
+		`<line x1="1" y1="3.5" x2="2" y2="3.5" stroke="` + colorLevel +
+		`" stroke-width="` + num(strokeW) +
+		`" stroke-dasharray="8 10"/>` + "\n"
+	assert.Equal(t, want, buf.String())
+}
+
+func Test_Renderer_modules(t *testing.T) {
+	// --- Given ---
+	rnd := must.Value(NewRenderer())
+	buf := &bytes.Buffer{}
+	grp := newGraph(map[string][]string{"a": {"b"}, "b": nil})
+	lay := rnd.layout(grp)
+	ids := moduleIDs(grp)
+	cls := relClasses(grp, ids)
+	bdg := badges(grp, ids)
+
+	// --- When ---
+	rnd.modules(buf, grp, lay, ids, cls, bdg)
+
+	// --- Then ---
+	have := buf.String()
+	assert.Equal(t, 2, strings.Count(have, "</g>\n"))
+	wDep := `data-module="b" data-level="0" data-dependents="a">`
+	assert.Contain(t, wDep, have)
+	wTop := `data-module="a" data-level="1" data-dependents="">`
+	assert.Contain(t, wTop, have)
+}
+
+func Test_Renderer_orders(t *testing.T) {
+	t.Run("one badge per order", func(t *testing.T) {
+		// --- Given ---
+		rnd := must.Value(NewRenderer())
+		buf := &bytes.Buffer{}
+		bdgs := []badge{{pin: "m0", rank: 1}, {pin: "m1", rank: 2}}
+
+		// --- When ---
+		rnd.orders(buf, layout{boxW: 100}, 10, 20, bdgs)
+
+		// --- Then ---
+		have := buf.String()
+		assert.Contain(t, `class="badge bm0"`, have)
+		assert.Contain(t, ">1</text>", have)
+		assert.Contain(t, `class="badge bm1"`, have)
+		assert.Contain(t, ">2</text>", have)
+	})
+
+	t.Run("no badges", func(t *testing.T) {
+		// --- Given ---
+		rnd := must.Value(NewRenderer())
+		buf := &bytes.Buffer{}
+
+		// --- When ---
+		rnd.orders(buf, layout{boxW: 100}, 10, 20, nil)
+
+		// --- Then ---
+		assert.Equal(t, "", buf.String())
+	})
+}
+
 func Test_moduleIDs(t *testing.T) {
 	// --- Given ---
 	grp := newGraph(map[string][]string{
