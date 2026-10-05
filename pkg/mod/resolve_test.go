@@ -419,14 +419,42 @@ func Test_replaces_lookup_tabular(t *testing.T) {
 }
 
 func Test_newGoFetcher(t *testing.T) {
-	// --- When ---
-	have, err := newGoFetcher(os.Environ())
+	t.Run("probe module", func(t *testing.T) {
+		// --- When ---
+		have, err := newGoFetcher(os.Environ())
 
-	// --- Then ---
-	assert.NoError(t, err)
-	assert.Equal(t, probeMod, oskit.ReadFileStr(t, have.dir, "go.mod"))
-	assert.NoError(t, have.close())
-	assert.False(t, oskit.PathExists(t, have.dir))
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, probeMod, oskit.ReadFileStr(t, have.dir, "go.mod"))
+		assert.NoError(t, have.close())
+		assert.False(t, oskit.PathExists(t, have.dir))
+	})
+
+	t.Run("nil environment inherits the process one", func(t *testing.T) {
+		// --- When ---
+		have, err := newGoFetcher(nil)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		t.Cleanup(func() { _ = have.close() })
+		want := append(os.Environ(), "GOWORK=off")
+		assert.Equal(t, want, have.env)
+	})
+
+	t.Run("environment is not written to", func(t *testing.T) {
+		// --- Given ---
+		env := make([]string, 1, 2)
+		env[0] = "A=1"
+
+		// --- When ---
+		have, err := newGoFetcher(env)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		t.Cleanup(func() { _ = have.close() })
+		assert.Equal(t, []string{"A=1", "GOWORK=off"}, have.env)
+		assert.Equal(t, "", env[:2][1])
+	})
 }
 
 func Test_goFetcher_fetch(t *testing.T) {
@@ -442,7 +470,7 @@ func Test_goFetcher_fetch(t *testing.T) {
 		dir := t.TempDir()
 		oskit.Create(t, "#!/bin/sh\nexec sleep 5\n", dir, "go")
 		must.Nil(os.Chmod(filepath.Join(dir, "go"), 0o700))
-		t.Setenv("PATH", dir)
+		t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 		gof := must.Value(newGoFetcher(nil))
 		t.Cleanup(func() { _ = gof.close() })

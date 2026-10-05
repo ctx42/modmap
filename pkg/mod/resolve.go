@@ -43,7 +43,8 @@ type Resolver struct {
 
 // NewResolver returns a resolver keeping only the modules passing flt and
 // reporting its progress with logf. A nil logf discards progress messages.
-// The env carries the environment the go command runs with.
+// The env carries the environment the go command runs with; a nil env is
+// the environment of the process.
 func NewResolver(
 	flt Filter,
 	env []string,
@@ -245,9 +246,9 @@ type goFetcher struct {
 	env []string // Environment the go command runs with.
 }
 
-// newGoFetcher returns a fetcher running the go command with env in a
-// throwaway module directory created in the operating system temporary
-// directory.
+// newGoFetcher returns a fetcher running the go command with env, or the
+// environment of the process when env is nil, in a throwaway module directory
+// created in the operating system temporary directory.
 func newGoFetcher(env []string) (*goFetcher, error) {
 	dir, err := os.MkdirTemp("", "modmap-")
 	if err != nil {
@@ -257,7 +258,11 @@ func newGoFetcher(env []string) (*goFetcher, error) {
 	if err = os.WriteFile(pth, []byte(probeMod), 0600); err != nil {
 		return nil, fmt.Errorf("probe module: %w", err)
 	}
-	return &goFetcher{dir: dir, env: append(env, "GOWORK=off")}, nil
+	if env == nil {
+		env = os.Environ()
+	}
+	env = slices.Concat(env, []string{"GOWORK=off"})
+	return &goFetcher{dir: dir, env: env}, nil
 }
 
 // close removes the probe module directory.
