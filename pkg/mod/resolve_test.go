@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"syscall"
 	"testing"
 	"time"
 
@@ -19,17 +20,31 @@ import (
 )
 
 func Test_NewResolver(t *testing.T) {
-	// --- Given ---
-	flt := NewFilter([]string{"example.com/*"}, nil)
+	t.Run("resolver created", func(t *testing.T) {
+		// --- Given ---
+		flt := NewFilter([]string{"example.com/*"}, nil)
 
-	// --- When ---
-	have, err := NewResolver(flt, os.Environ(), nil)
+		// --- When ---
+		have, err := NewResolver(flt, os.Environ(), nil)
 
-	// --- Then ---
-	assert.NoError(t, err)
-	assert.Equal(t, flt, have.flt)
-	assert.NotNil(t, have.logf)
-	assert.NoError(t, have.Close())
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, flt, have.flt)
+		assert.NotNil(t, have.logf)
+		assert.NoError(t, have.Close())
+	})
+
+	t.Run("error - probe module cannot be created", func(t *testing.T) {
+		// --- Given ---
+		t.Setenv("TMPDIR", oskit.Create(t, "", t.TempDir(), "file"))
+
+		// --- When ---
+		have, err := NewResolver(Filter{}, nil, nil)
+
+		// --- Then ---
+		assert.ErrorIs(t, syscall.ENOTDIR, err)
+		assert.Nil(t, have)
+	})
 }
 
 func Test_Resolver_Resolve(t *testing.T) {
@@ -208,6 +223,50 @@ func Test_Resolver_Resolve(t *testing.T) {
 		assert.Empty(t, fkf.calls)
 	})
 
+	t.Run("same requirement queued twice", func(t *testing.T) {
+		// --- Given ---
+		fkf := &fakeFetcher{mods: map[string]string{
+			"example.com/c@v1.0.0": "module example.com/c\n",
+		}}
+		mods := map[string]*Module{
+			"example.com/a": newModule(
+				"example.com/a",
+				"/src/a",
+				"example.com/c",
+			),
+			"example.com/b": newModule(
+				"example.com/b",
+				"/src/b",
+				"example.com/c",
+			),
+		}
+		rsv := newTestResolver(Filter{}, fkf)
+
+		// --- When ---
+		err := rsv.Resolve(t.Context(), mods)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"example.com/c@v1.0.0"}, fkf.calls)
+	})
+
+	t.Run("error - malformed module file on disk", func(t *testing.T) {
+		// --- Given ---
+		dir := filepath.Dir(writeMod(t, "module\n", t.TempDir(), "a"))
+		fkf := &fakeFetcher{mods: map[string]string{}}
+		mods := map[string]*Module{
+			"example.com/a": newModule("example.com/a", dir, "example.com/b"),
+		}
+		rsv := newTestResolver(Filter{}, fkf)
+
+		// --- When ---
+		err := rsv.Resolve(t.Context(), mods)
+
+		// --- Then ---
+		assert.ErrorContain(t, "parse module file", err)
+		assert.Empty(t, fkf.calls)
+	})
+
 	t.Run("filtered requirements are not fetched", func(t *testing.T) {
 		// --- Given ---
 		fkf := &fakeFetcher{mods: map[string]string{
@@ -276,6 +335,156 @@ func Test_Resolver_Resolve(t *testing.T) {
 	})
 }
 
+func Test_Resolver_expand(t *testing.T) {
+	t.Run("new module added", func(t *testing.T) {
+		// --- Given ---
+		fkf := &fakeFetcher{mods: map[string]string{
+			"example.com/b@v1.0.0": "" +
+				"module example.com/b\n" +
+				"require example.com/c v1.0.0\n",
+		}}
+		rsv := newTestResolver(Filter{}, fkf)
+		req := Require{Path: "example.com/b", Ver: "v1.0.0"}
+		mods := map[string]*Module{}
+
+		// --- When ---
+		have, err := rsv.expand(t.Context(), req, replaces{}, mods)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := []Require{{Path: "example.com/c", Ver: "v1.0.0"}}
+		assert.Equal(t, want, have)
+		assert.Equal(t, want, mods["example.com/b"].Requires)
+		assert.Equal(t, "example.com/b", mods["example.com/b"].Path)
+	})
+
+	t.Run("existing module merged", func(t *testing.T) {
+		// --- Given ---
+		fkf := &fakeFetcher{mods: map[string]string{
+			"example.com/b@v2.0.0": "" +
+				"module example.com/b\n" +
+				"require example.com/d v1.0.0\n",
+		}}
+		rsv := newTestResolver(Filter{}, fkf)
+		req := Require{Path: "example.com/b", Ver: "v2.0.0"}
+		mods := map[string]*Module{
+			"example.com/b": newModule("example.com/b", "", "example.com/c"),
+		}
+
+		// --- When ---
+		have, err := rsv.expand(t.Context(), req, replaces{}, mods)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, []Require{{Path: "example.com/d", Ver: "v1.0.0"}}, have)
+		want := []string{"example.com/c", "example.com/d"}
+		assert.Equal(t, want, mods["example.com/b"].Deps())
+	})
+
+	t.Run("error - fetch fails", func(t *testing.T) {
+		// --- Given ---
+		fkf := &fakeFetcher{mods: map[string]string{}}
+		rsv := newTestResolver(Filter{}, fkf)
+		req := Require{Path: "example.com/b", Ver: "v1.0.0"}
+		mods := map[string]*Module{}
+
+		// --- When ---
+		have, err := rsv.expand(t.Context(), req, replaces{}, mods)
+
+		// --- Then ---
+		assert.ErrorEqual(t, "module not served: example.com/b@v1.0.0", err)
+		assert.Nil(t, have)
+		assert.Empty(t, mods)
+	})
+
+	t.Run("error - malformed module file", func(t *testing.T) {
+		// --- Given ---
+		fkf := &fakeFetcher{mods: map[string]string{
+			"example.com/b@v1.0.0": "module\n",
+		}}
+		rsv := newTestResolver(Filter{}, fkf)
+		req := Require{Path: "example.com/b", Ver: "v1.0.0"}
+		mods := map[string]*Module{}
+
+		// --- When ---
+		have, err := rsv.expand(t.Context(), req, replaces{}, mods)
+
+		// --- Then ---
+		assert.ErrorContain(t, "parse module file", err)
+		assert.Nil(t, have)
+		assert.Empty(t, mods)
+	})
+}
+
+func Test_Resolver_read(t *testing.T) {
+	t.Run("not replaced", func(t *testing.T) {
+		// --- Given ---
+		fkf := &fakeFetcher{mods: map[string]string{
+			"example.com/b@v1.0.0": "module example.com/b\n",
+		}}
+		rsv := newTestResolver(Filter{}, fkf)
+		req := Require{Path: "example.com/b", Ver: "v1.0.0"}
+
+		// --- When ---
+		have, err := rsv.read(t.Context(), req, replaces{})
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "module example.com/b\n", string(have))
+	})
+
+	t.Run("directory replacement", func(t *testing.T) {
+		// --- Given ---
+		dir := filepath.Dir(writeMod(t, "module example.com/x\n", t.TempDir()))
+		fkf := &fakeFetcher{mods: map[string]string{}}
+		rsv := newTestResolver(Filter{}, fkf)
+		req := Require{Path: "example.com/b", Ver: "v1.0.0"}
+		rps := replaces{{Path: "example.com/b"}: {dir: dir}}
+
+		// --- When ---
+		have, err := rsv.read(t.Context(), req, rps)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "module example.com/x\n", string(have))
+		assert.Empty(t, fkf.calls)
+	})
+
+	t.Run("version replacement", func(t *testing.T) {
+		// --- Given ---
+		fkf := &fakeFetcher{mods: map[string]string{
+			"example.com/y@v1.1.0": "module example.com/y\n",
+		}}
+		rsv := newTestResolver(Filter{}, fkf)
+		req := Require{Path: "example.com/b", Ver: "v1.0.0"}
+		rpl := replacement{pth: "example.com/y", ver: "v1.1.0"}
+		rps := replaces{{Path: "example.com/b"}: rpl}
+
+		// --- When ---
+		have, err := rsv.read(t.Context(), req, rps)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "module example.com/y\n", string(have))
+		assert.Equal(t, []string{"example.com/y@v1.1.0"}, fkf.calls)
+	})
+
+	t.Run("error - no module file in replacement", func(t *testing.T) {
+		// --- Given ---
+		rsv := newTestResolver(Filter{}, &fakeFetcher{})
+		req := Require{Path: "example.com/b", Ver: "v1.0.0"}
+		rps := replaces{{Path: "example.com/b"}: {dir: t.TempDir()}}
+
+		// --- When ---
+		have, err := rsv.read(t.Context(), req, rps)
+
+		// --- Then ---
+		assert.ErrorIs(t, fs.ErrNotExist, err)
+		assert.ErrorContain(t, "read module file", err)
+		assert.Nil(t, have)
+	})
+}
+
 func Test_Resolver_Close(t *testing.T) {
 	// --- Given ---
 	fkf := &fakeFetcher{}
@@ -326,6 +535,23 @@ func Test_readReplaces(t *testing.T) {
 			},
 		}
 		assert.Equal(t, want, have)
+	})
+
+	t.Run("error - module file is a directory", func(t *testing.T) {
+		// --- Given ---
+		dir := t.TempDir()
+		oskit.MkdirAll(t, dir, "go.mod")
+		mods := map[string]*Module{
+			"example.com/a": {Path: "example.com/a", Dir: dir},
+		}
+
+		// --- When ---
+		have, err := readReplaces(mods)
+
+		// --- Then ---
+		assert.ErrorIs(t, syscall.EISDIR, err)
+		assert.ErrorContain(t, "read module file", err)
+		assert.Nil(t, have)
 	})
 
 	t.Run("error - malformed module file", func(t *testing.T) {
@@ -455,6 +681,31 @@ func Test_newGoFetcher(t *testing.T) {
 		assert.Equal(t, []string{"A=1", "GOWORK=off"}, have.env)
 		assert.Equal(t, "", env[:2][1])
 	})
+
+	t.Run("error - probe module cannot be created", func(t *testing.T) {
+		// --- Given ---
+		t.Setenv("TMPDIR", oskit.Create(t, "", t.TempDir(), "file"))
+
+		// --- When ---
+		have, err := newGoFetcher(nil)
+
+		// --- Then ---
+		assert.ErrorIs(t, syscall.ENOTDIR, err)
+		assert.ErrorContain(t, "probe module", err)
+		assert.Nil(t, have)
+	})
+}
+
+func Test_goFetcher_close(t *testing.T) {
+	// --- Given ---
+	gof := must.Value(newGoFetcher(nil))
+
+	// --- When ---
+	err := gof.close()
+
+	// --- Then ---
+	assert.NoError(t, err)
+	assert.False(t, oskit.PathExists(t, gof.dir))
 }
 
 func Test_goFetcher_fetch(t *testing.T) {

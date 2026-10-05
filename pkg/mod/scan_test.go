@@ -9,10 +9,12 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/ctx42/testing/pkg/assert"
 	"github.com/ctx42/testing/pkg/must"
+	"github.com/ctx42/testkit/pkg/oskit"
 )
 
 func Test_NewScanner(t *testing.T) {
@@ -202,6 +204,133 @@ func Test_Scanner_Scan(t *testing.T) {
 		// --- Then ---
 		assert.ErrorContain(t, "parse module file", err)
 		assert.Nil(t, have)
+	})
+}
+
+func Test_Scanner_walk(t *testing.T) {
+	t.Run("modules collected", func(t *testing.T) {
+		// --- Given ---
+		root := t.TempDir()
+		writeMod(t, "module example.com/a\n", root, "a")
+		writeMod(t, "module example.com/v\n", root, "vendor", "v")
+		writeMod(t, "module other.com/b\n", root, "b")
+		writeMod(t, "module example.com/a\n", root, "c")
+		oskit.Create(t, "", root, "a", "main.go")
+
+		var msgs []string
+		logf := func(format string, args ...any) {
+			msgs = append(msgs, fmt.Sprintf(format, args...))
+		}
+		flt := NewFilter([]string{"example.com/*"}, nil)
+		scn := NewScanner(flt, logf)
+
+		mods := map[string]*Module{}
+
+		// --- When ---
+		err := scn.walk(t.Context(), root, mods)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Len(t, 1, mods)
+		assert.Equal(t, filepath.Join(root, "a"), mods["example.com/a"].Dir)
+		assert.Equal(t, []string{"found example.com/a"}, msgs)
+	})
+
+	t.Run("root named like a skipped directory", func(t *testing.T) {
+		// --- Given ---
+		root := oskit.MkdirAll(t, t.TempDir(), "vendor")
+		writeMod(t, "module example.com/a\n", root, "a")
+		scn := NewScanner(Filter{}, nil)
+		mods := map[string]*Module{}
+
+		// --- When ---
+		err := scn.walk(t.Context(), root, mods)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Len(t, 1, mods)
+	})
+
+	t.Run("module already known is kept", func(t *testing.T) {
+		// --- Given ---
+		root := t.TempDir()
+		writeMod(t, "module example.com/a\n", root, "a")
+		scn := NewScanner(Filter{}, nil)
+		known := &Module{Path: "example.com/a", Dir: "/src/a"}
+		mods := map[string]*Module{"example.com/a": known}
+
+		// --- When ---
+		err := scn.walk(t.Context(), root, mods)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Same(t, known, mods["example.com/a"])
+	})
+
+	t.Run("error - context cancelled", func(t *testing.T) {
+		// --- Given ---
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+
+		root := t.TempDir()
+		writeMod(t, "module example.com/a\n", root, "a")
+		scn := NewScanner(Filter{}, nil)
+		mods := map[string]*Module{}
+
+		// --- When ---
+		err := scn.walk(ctx, root, mods)
+
+		// --- Then ---
+		assert.ErrorIs(t, context.Canceled, err)
+		assert.ErrorContain(t, "scan "+root, err)
+		assert.Empty(t, mods)
+	})
+
+	t.Run("error - root does not exist", func(t *testing.T) {
+		// --- Given ---
+		root := filepath.Join(t.TempDir(), "gone")
+		scn := NewScanner(Filter{}, nil)
+
+		// --- When ---
+		err := scn.walk(t.Context(), root, map[string]*Module{})
+
+		// --- Then ---
+		assert.ErrorIs(t, fs.ErrNotExist, err)
+		assert.ErrorContain(t, "scan "+root, err)
+	})
+
+	t.Run("error - directory cannot be read", func(t *testing.T) {
+		// --- Given ---
+		if os.Geteuid() == 0 || runtime.GOOS == "windows" {
+			t.Skip("needs a directory the user cannot read")
+		}
+		root := t.TempDir()
+		dir := oskit.MkdirAll(t, root, "locked")
+		must.Nil(os.Chmod(dir, 0))
+		t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
+
+		scn := NewScanner(Filter{}, nil)
+
+		// --- When ---
+		err := scn.walk(t.Context(), root, map[string]*Module{})
+
+		// --- Then ---
+		assert.ErrorIs(t, fs.ErrPermission, err)
+	})
+
+	t.Run("error - malformed module file", func(t *testing.T) {
+		// --- Given ---
+		root := t.TempDir()
+		writeMod(t, "module\n", root, "a")
+		scn := NewScanner(Filter{}, nil)
+		mods := map[string]*Module{}
+
+		// --- When ---
+		err := scn.walk(t.Context(), root, mods)
+
+		// --- Then ---
+		assert.ErrorContain(t, "parse module file", err)
+		assert.Empty(t, mods)
 	})
 }
 
