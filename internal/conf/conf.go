@@ -86,7 +86,7 @@ func Load(pth string) (*Config, error) {
 	}
 	cfg.resolve(filepath.Dir(pth))
 	if err = cfg.validate(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("validate %s: %w", pth, err)
 	}
 	return cfg, nil
 }
@@ -132,10 +132,10 @@ func (cfg *Config) validate() error {
 	}
 	names := make(map[string]bool, len(cfg.Maps))
 	outs := make(map[string]string, len(cfg.Maps))
-	for _, mp := range cfg.Maps {
+	for idx, mp := range cfg.Maps {
 		switch {
 		case mp.Name == "":
-			return ErrNoName
+			return fmt.Errorf("%w: maps[%d]", ErrNoName, idx)
 
 		case names[mp.Name]:
 			return fmt.Errorf("%w: %s", ErrDupName, mp.Name)

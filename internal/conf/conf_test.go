@@ -134,6 +134,7 @@ func Test_Load(t *testing.T) {
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrNoMaps, err)
+		assert.ErrorEqual(t, "validate "+pth+": no maps declared", err)
 		assert.Nil(t, have)
 	})
 }
@@ -190,15 +191,29 @@ func Test_Config_Names(t *testing.T) {
 }
 
 func Test_Config_validate(t *testing.T) {
-	// --- Given ---
 	valid := Map{Name: "a", Dirs: []string{"/src"}, Out: "/out.svg"}
-	cfg := &Config{Maps: []Map{valid}}
 
-	// --- When ---
-	err := cfg.validate()
+	t.Run("valid", func(t *testing.T) {
+		// --- Given ---
+		cfg := &Config{Maps: []Map{valid}}
 
-	// --- Then ---
-	assert.NoError(t, err)
+		// --- When ---
+		err := cfg.validate()
+
+		// --- Then ---
+		assert.NoError(t, err)
+	})
+
+	t.Run("error - no name", func(t *testing.T) {
+		// --- Given ---
+		cfg := &Config{Maps: []Map{valid, {Dirs: []string{"/src"}}}}
+
+		// --- When ---
+		err := cfg.validate()
+
+		// --- Then ---
+		assert.ErrorEqual(t, "map without a name: maps[1]", err)
+	})
 }
 
 func Test_Config_validate_tabular(t *testing.T) {
