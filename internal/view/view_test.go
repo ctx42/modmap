@@ -39,6 +39,25 @@ func Test_Open(t *testing.T) {
 		assert.Equal(t, `<svg id="m"/>`, doc)
 	})
 
+	t.Run("relative temporary directory", func(t *testing.T) {
+		// --- Given ---
+		tmp := t.TempDir()
+		t.Chdir(tmp)
+		t.Setenv("TMPDIR", "rel")
+
+		var opened string
+		opener := func(url string) error { opened = url; return nil }
+
+		// --- When ---
+		have, err := Open("ctx42", []byte("<svg/>"), opener)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := filepath.Join(tmp, "rel", dirName, "ctx42.html")
+		assert.Equal(t, want, have)
+		assert.Equal(t, "file://"+want, opened)
+	})
+
 	t.Run("the browser opener defaults to the desktop one", func(t *testing.T) {
 		// --- Given ---
 		// Nothing on the PATH can open a browser, so nothing is launched.
@@ -233,7 +252,7 @@ func Test_fileURL_tabular(t *testing.T) {
 	}{
 		{"an absolute path", "/tmp/modmap/a.html", "file:///tmp/modmap/a.html"},
 		{"a space", "/tmp/the map.html", "file:///tmp/the%20map.html"},
-		{"a relative path", "a.html", "file:///a.html"},
+		{"a drive letter", "C:/a.html", "file:///C:/a.html"},
 	}
 
 	for _, tc := range tt {

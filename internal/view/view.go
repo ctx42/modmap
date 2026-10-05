@@ -64,7 +64,11 @@ func Open(
 	opener func(url string) error,
 ) (string, error) {
 
-	pth, err := write(filepath.Join(os.TempDir(), dirName), title, doc)
+	dir, err := filepath.Abs(filepath.Join(os.TempDir(), dirName))
+	if err != nil {
+		return "", fmt.Errorf("create map directory: %w", err)
+	}
+	pth, err := write(dir, title, doc)
 	if err != nil {
 		return "", err
 	}
