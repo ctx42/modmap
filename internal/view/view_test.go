@@ -4,8 +4,11 @@
 package view
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
+	"syscall"
 	"testing"
 
 	"github.com/ctx42/testing/pkg/assert"
@@ -198,6 +201,134 @@ func Test_write(t *testing.T) {
 		// --- Then ---
 		assert.ErrorContain(t, "create map directory", err)
 		assert.Equal(t, "", have)
+	})
+}
+
+func Test_privateDir(t *testing.T) {
+	t.Run("new directory", func(t *testing.T) {
+		// --- Given ---
+		dir := filepath.Join(t.TempDir(), "maps")
+
+		// --- When ---
+		err := privateDir(dir)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		inf := must.Value(os.Lstat(dir))
+		assert.True(t, inf.IsDir())
+		assert.Equal(t, os.FileMode(dirPerm), inf.Mode().Perm())
+	})
+
+	t.Run("open directory made private", func(t *testing.T) {
+		// --- Given ---
+		dir := t.TempDir()
+		must.Nil(os.Chmod(dir, 0o755))
+
+		// --- When ---
+		err := privateDir(dir)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		inf := must.Value(os.Lstat(dir))
+		assert.Equal(t, os.FileMode(dirPerm), inf.Mode().Perm())
+	})
+
+	t.Run("error - symbolic link", func(t *testing.T) {
+		// --- Given ---
+		dir := filepath.Join(t.TempDir(), "link")
+		must.Nil(os.Symlink(t.TempDir(), dir))
+
+		// --- When ---
+		err := privateDir(dir)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrUnsafeDir, err)
+		assert.ErrorContain(t, "not a directory", err)
+	})
+
+	t.Run("error - owned by another user", func(t *testing.T) {
+		// --- Given ---
+		if os.Geteuid() == 0 || runtime.GOOS == "windows" {
+			t.Skip("needs a directory of another user")
+		}
+
+		// --- When ---
+		err := privateDir("/")
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrUnsafeDir, err)
+		assert.ErrorContain(t, "owned by another user", err)
+	})
+
+	t.Run("error - cannot be created", func(t *testing.T) {
+		// --- Given ---
+		fil := oskit.Create(t, "", t.TempDir(), "file")
+
+		// --- When ---
+		err := privateDir(filepath.Join(fil, "sub"))
+
+		// --- Then ---
+		assert.ErrorIs(t, syscall.ENOTDIR, err)
+		assert.ErrorContain(t, "create map directory", err)
+	})
+}
+
+func Test_replaceFile(t *testing.T) {
+	t.Run("file replaced", func(t *testing.T) {
+		// --- Given ---
+		dir := t.TempDir()
+		oskit.Create(t, "old", dir, "a.svg")
+
+		// --- When ---
+		err := replaceFile(dir, "a.svg", []byte("new"))
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "new", oskit.ReadFileStr(t, dir, "a.svg"))
+		inf := must.Value(os.Stat(filepath.Join(dir, "a.svg")))
+		assert.Equal(t, os.FileMode(filePerm), inf.Mode().Perm())
+		assert.Len(t, 1, oskit.List(t, dir))
+	})
+
+	t.Run("planted link replaced", func(t *testing.T) {
+		// --- Given ---
+		tgt := oskit.Create(t, "keep", t.TempDir(), "target")
+
+		dir := t.TempDir()
+		must.Nil(os.Symlink(tgt, filepath.Join(dir, "a.svg")))
+
+		// --- When ---
+		err := replaceFile(dir, "a.svg", []byte("new"))
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "new", oskit.ReadFileStr(t, dir, "a.svg"))
+		assert.Equal(t, "keep", oskit.ReadFileStr(t, tgt))
+	})
+
+	t.Run("error - name taken by a directory", func(t *testing.T) {
+		// --- Given ---
+		dir := t.TempDir()
+		oskit.MkdirAll(t, dir, "a.svg")
+
+		// --- When ---
+		err := replaceFile(dir, "a.svg", []byte("new"))
+
+		// --- Then ---
+		var lne *os.LinkError
+		assert.ErrorAs(t, &lne, err)
+		assert.Len(t, 1, oskit.List(t, dir))
+	})
+
+	t.Run("error - directory does not exist", func(t *testing.T) {
+		// --- Given ---
+		dir := filepath.Join(t.TempDir(), "gone")
+
+		// --- When ---
+		err := replaceFile(dir, "a.svg", []byte("new"))
+
+		// --- Then ---
+		assert.ErrorIs(t, fs.ErrNotExist, err)
 	})
 }
 
