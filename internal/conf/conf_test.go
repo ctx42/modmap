@@ -287,6 +287,28 @@ func Test_Config_validate_tabular(t *testing.T) {
 	}
 }
 
+func Test_Config_resolve(t *testing.T) {
+	// --- Given ---
+	cfg := &Config{Maps: []Map{
+		{Name: "a", Dirs: []string{"src", "/abs"}, Out: "out/a.svg"},
+		{Name: "b", Dirs: []string{""}, Out: ""},
+	}}
+
+	// --- When ---
+	cfg.resolve("/cfg")
+
+	// --- Then ---
+	want := []Map{
+		{
+			Name: "a",
+			Dirs: []string{"/cfg/src", "/abs"},
+			Out:  "/cfg/out/a.svg",
+		},
+		{Name: "b", Dirs: []string{""}, Out: ""},
+	}
+	assert.Equal(t, want, cfg.Maps)
+}
+
 func Test_absPath_tabular(t *testing.T) {
 	tt := []struct {
 		testN string
