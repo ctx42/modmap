@@ -4,7 +4,6 @@
 package graph
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/ctx42/testing/pkg/assert"
@@ -61,9 +60,8 @@ func Test_Graph_checkCycles(t *testing.T) {
 		err := grp.checkCycles()
 
 		// --- Then ---
-		var cyc *CycleError
-		assert.True(t, errors.As(err, &cyc))
-		assert.Equal(t, []string{"a", "b", "c", "a"}, cyc.Path)
+		want := &CycleError{Path: []string{"a", "b", "c", "a"}}
+		assert.Equal(t, want, err)
 	})
 
 	t.Run("error - module requiring itself", func(t *testing.T) {
@@ -74,8 +72,6 @@ func Test_Graph_checkCycles(t *testing.T) {
 		err := grp.checkCycles()
 
 		// --- Then ---
-		var cyc *CycleError
-		assert.True(t, errors.As(err, &cyc))
-		assert.Equal(t, []string{"a", "a"}, cyc.Path)
+		assert.Equal(t, &CycleError{Path: []string{"a", "a"}}, err)
 	})
 }

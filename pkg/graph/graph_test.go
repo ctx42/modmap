@@ -122,7 +122,7 @@ func Test_New(t *testing.T) {
 		have, err := New(mods)
 
 		// --- Then ---
-		assert.ErrorContain(t, "dependency cycle: a -> b -> a", err)
+		assert.Equal(t, &CycleError{Path: []string{"a", "b", "a"}}, err)
 		assert.Nil(t, have)
 	})
 }
