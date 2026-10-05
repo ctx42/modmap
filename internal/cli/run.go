@@ -120,7 +120,7 @@ func generate(
 	}
 	logf("graph has %d modules, widest level %d", grp.Len(), grp.Widest())
 
-	render, err := confirm(rng, grp.Widest(), cfg.yes)
+	render, err := confirm(ctx, rng, grp.Widest(), cfg.yes)
 	if err != nil {
 		return err
 	}

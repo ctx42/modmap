@@ -5,6 +5,8 @@ package cli
 
 import (
 	"bytes"
+	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -21,7 +23,7 @@ func Test_confirm(t *testing.T) {
 		rng := tst.Ring()
 
 		// --- When ---
-		have, err := confirm(rng, wideLevel, false)
+		have, err := confirm(t.Context(), rng, wideLevel, false)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -34,7 +36,7 @@ func Test_confirm(t *testing.T) {
 		rng := tst.Ring()
 
 		// --- When ---
-		have, err := confirm(rng, wideLevel+1, true)
+		have, err := confirm(t.Context(), rng, wideLevel+1, true)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -50,7 +52,7 @@ func Test_confirm(t *testing.T) {
 		rng := tst.Ring()
 
 		// --- When ---
-		have, err := confirm(rng, wideLevel+1, false)
+		have, err := confirm(t.Context(), rng, wideLevel+1, false)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -67,7 +69,7 @@ func Test_prompt(t *testing.T) {
 		rng := tst.Ring()
 
 		// --- When ---
-		have, err := prompt(rng, "render it? ")
+		have, err := prompt(t.Context(), rng, "render it? ")
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -75,6 +77,26 @@ func Test_prompt(t *testing.T) {
 		assert.Equal(t, "render it? ", tst.Stderr())
 	})
 
+	t.Run("error - context cancelled", func(t *testing.T) {
+		// --- Given ---
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+
+		src, dst := io.Pipe()
+		t.Cleanup(func() { _ = dst.Close() })
+
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+		rng.SetStdin(src)
+
+		// --- When ---
+		have, err := prompt(ctx, rng, "render it? ")
+
+		// --- Then ---
+		assert.ErrorIs(t, context.Canceled, err)
+		assert.False(t, have)
+		assert.Equal(t, "render it? ", tst.Stderr())
+	})
 }
 
 func Test_prompt_tabular(t *testing.T) {
@@ -101,7 +123,7 @@ func Test_prompt_tabular(t *testing.T) {
 			tst.SetStdin(bytes.NewBufferString(tc.answer))
 
 			// --- When ---
-			have, err := prompt(tst.Ring(), "render it? ")
+			have, err := prompt(t.Context(), tst.Ring(), "render it? ")
 
 			// --- Then ---
 			assert.NoError(t, err)

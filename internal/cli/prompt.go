@@ -5,6 +5,7 @@ package cli
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -21,7 +22,13 @@ const wideLevel = 20
 // level holds no more than [wideLevel] boxes is always rendered. A wider one
 // is announced on stderr and confirmed by the user, unless yes is set or
 // there is nobody to ask, in which case it is rendered as well.
-func confirm(rng *ring.Ring, widest int, yes bool) (bool, error) {
+func confirm(
+	ctx context.Context,
+	rng *ring.Ring,
+	widest int,
+	yes bool,
+) (bool, error) {
+
 	if widest <= wideLevel {
 		return true, nil
 	}
@@ -32,21 +39,41 @@ func confirm(rng *ring.Ring, widest int, yes bool) (bool, error) {
 	if yes || !isTTY(rng.Stdin()) {
 		return true, nil
 	}
-	return prompt(rng, "render it anyway? [y/N]: ")
+	return prompt(ctx, rng, "render it anyway? [y/N]: ")
 }
 
 // prompt writes the question to stderr and reads the answer from stdin. Only
-// "y" and "yes", in any case, are taken for a yes.
-func prompt(rng *ring.Ring, question string) (bool, error) {
+// "y" and "yes", in any case, are taken for a yes. It returns the context
+// error as soon as ctx is done, leaving the read of the answer behind.
+func prompt(
+	ctx context.Context,
+	rng *ring.Ring,
+	question string,
+) (bool, error) {
+
 	_, _ = fmt.Fprint(rng.Stderr(), question)
-	line, err := bufio.NewReader(rng.Stdin()).ReadString('\n')
-	if err != nil && line == "" {
-		if err == io.EOF {
+	type reply struct {
+		line string
+		err  error
+	}
+	rpls := make(chan reply, 1)
+	go func() {
+		line, err := bufio.NewReader(rng.Stdin()).ReadString('\n')
+		rpls <- reply{line: line, err: err}
+	}()
+	var rpl reply
+	select {
+	case <-ctx.Done():
+		return false, ctx.Err()
+	case rpl = <-rpls:
+	}
+	if rpl.err != nil && rpl.line == "" {
+		if rpl.err == io.EOF {
 			return false, nil
 		}
-		return false, fmt.Errorf("read answer: %w", err)
+		return false, fmt.Errorf("read answer: %w", rpl.err)
 	}
-	answer := strings.ToLower(strings.TrimSpace(line))
+	answer := strings.ToLower(strings.TrimSpace(rpl.line))
 	return answer == "y" || answer == "yes", nil
 }
 
