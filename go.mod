@@ -7,7 +7,10 @@ require (
 	github.com/ctx42/testing v0.56.0
 	github.com/ctx42/xflag v0.11.0
 	golang.org/x/mod v0.41.0
+	golang.org/x/term v0.45.0
 )
+
+require golang.org/x/sys v0.48.0 // indirect
 
 require (
 	github.com/ctx42/goldkit v0.20.0

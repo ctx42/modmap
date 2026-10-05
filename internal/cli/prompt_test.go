@@ -16,6 +16,7 @@ import (
 
 	"github.com/ctx42/ring/pkg/ring/ringtest"
 	"github.com/ctx42/testing/pkg/assert"
+	"github.com/ctx42/testing/pkg/must"
 	"github.com/ctx42/testkit/pkg/oskit"
 )
 
@@ -172,6 +173,18 @@ func Test_isTTY(t *testing.T) {
 		pth := oskit.Create(t, "", filepath.Join(t.TempDir(), "file"))
 		fil, err := os.Open(pth)
 		assert.NoError(t, err)
+		t.Cleanup(func() { _ = fil.Close() })
+
+		// --- When ---
+		have := isTTY(fil)
+
+		// --- Then ---
+		assert.False(t, have)
+	})
+
+	t.Run("the null device is not a terminal", func(t *testing.T) {
+		// --- Given ---
+		fil := must.Value(os.Open(os.DevNull))
 		t.Cleanup(func() { _ = fil.Close() })
 
 		// --- When ---

@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/ctx42/ring/pkg/ring"
+	"golang.org/x/term"
 )
 
 // wideLevel is the number of boxes on a level above which the map is too wide
@@ -81,9 +82,5 @@ func isTTY(src io.Reader) bool {
 	if !ok {
 		return false
 	}
-	inf, err := fil.Stat()
-	if err != nil {
-		return false
-	}
-	return inf.Mode()&os.ModeCharDevice != 0
+	return term.IsTerminal(int(fil.Fd()))
 }
