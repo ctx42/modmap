@@ -5,15 +5,22 @@ package cli
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
+	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 
+	"github.com/ctx42/ring/pkg/ring"
 	"github.com/ctx42/ring/pkg/ring/ringtest"
 	"github.com/ctx42/testing/pkg/assert"
+	"github.com/ctx42/testing/pkg/must"
 	"github.com/ctx42/testkit/pkg/oskit"
 
 	"github.com/ctx42/modmap/internal/view"
+	"github.com/ctx42/modmap/pkg/graph"
+	"github.com/ctx42/modmap/pkg/mod"
 )
 
 func Test_run(t *testing.T) {
@@ -197,6 +204,114 @@ func Test_generate(t *testing.T) {
 		assert.Contain(t, "graph has 1 modules", tst.Stderr())
 	})
 
+	t.Run("wide map declined", func(t *testing.T) {
+		// --- Given ---
+		src := t.TempDir()
+		for idx := range wideLevel + 1 {
+			content := fmt.Sprintf("module example.com/m%d\n", idx)
+			writeMod(t, content, src, fmt.Sprintf("m%d", idx))
+		}
+
+		ctl, trm := openPTY(t)
+		must.Value(ctl.WriteString("n\n"))
+
+		out := filepath.Join(t.TempDir(), "map.svg")
+		spc := spec{Dirs: []string{src}, Out: out}
+
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+		rng.SetStdin(trm)
+
+		// --- When ---
+		err := generate(t.Context(), rng, &config{}, spc)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.False(t, oskit.PathExists(t, out))
+		assert.Contain(t, "render it anyway? [y/N]: ", tst.Stderr())
+	})
+
+	t.Run("web map opened", func(t *testing.T) {
+		// --- Given ---
+		tmp := t.TempDir()
+		src := t.TempDir()
+		writeMod(t, "module example.com/a\n", src, "a")
+		t.Setenv("TMPDIR", tmp)
+
+		var opened string
+		cfg := &config{
+			web:    true,
+			opener: func(url string) error { opened = url; return nil },
+		}
+		spc := spec{Dirs: []string{src}}
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+
+		// --- When ---
+		err := generate(t.Context(), rng, cfg, spc)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		pth := filepath.Join(tmp, "modmap", filepath.Base(src)+".html")
+		assert.Equal(t, "file://"+pth, opened)
+		assert.Contain(t, "map written to "+pth, tst.Stderr())
+	})
+
+	t.Run("error - directory does not exist", func(t *testing.T) {
+		// --- Given ---
+		src := filepath.Join(t.TempDir(), "gone")
+		spc := spec{Dirs: []string{src}, Out: "/out.svg"}
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+
+		// --- When ---
+		err := generate(t.Context(), rng, &config{}, spc)
+
+		// --- Then ---
+		assert.ErrorIs(t, fs.ErrNotExist, err)
+		assert.Contain(t, "scanning "+src, tst.Stderr())
+	})
+
+	t.Run("error - resolver cannot start", func(t *testing.T) {
+		// --- Given ---
+		src := t.TempDir()
+		writeMod(t, "module example.com/a\n", src, "a")
+		spc := spec{Dirs: []string{src}, Out: "/out.svg"}
+		// os.MkdirTemp reads the process environment, which no ring reaches.
+		t.Setenv("TMPDIR", oskit.Create(t, "", t.TempDir(), "file"))
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+
+		// --- When ---
+		err := generate(t.Context(), rng, &config{}, spc)
+
+		// --- Then ---
+		assert.ErrorIs(t, syscall.ENOTDIR, err)
+		assert.ErrorContain(t, "probe module", err)
+		assert.Contain(t, "found example.com/a", tst.Stderr())
+	})
+
+	t.Run("error - requirement cannot be resolved", func(t *testing.T) {
+		// --- Given ---
+		src := t.TempDir()
+		writeMod(t, ""+
+			"module example.com/a\n"+
+			"require example.com/nope v1.0.0\n", src, "a")
+		spc := spec{Dirs: []string{src}, Out: "/out.svg"}
+
+		env := append(os.Environ(), "GOPROXY=off", "GOFLAGS=-mod=mod")
+		tst := ringtest.New(t, ring.WithEnv(env)).WetStderr()
+		rng := tst.Ring()
+
+		// --- When ---
+		err := generate(t.Context(), rng, &config{}, spc)
+
+		// --- Then ---
+		want := "^query example.com/nope@v1.0.0: .*GOPROXY=off"
+		assert.ErrorRegexp(t, want, err)
+		assert.Contain(t, "resolving example.com/nope@v1.0.0", tst.Stderr())
+	})
+
 	t.Run("error - dependency cycle", func(t *testing.T) {
 		// --- Given ---
 		src := t.TempDir()
@@ -328,5 +443,37 @@ func Test_show(t *testing.T) {
 
 		pth := filepath.Join(tmp, "modmap", filepath.Base(src)+".html")
 		assert.Contain(t, "map written to "+pth, tst.Stderr())
+	})
+}
+
+func Test_write(t *testing.T) {
+	t.Run("map written", func(t *testing.T) {
+		// --- Given ---
+		mods := map[string]*mod.Module{
+			"example.com/a": {Path: "example.com/a"},
+		}
+		grp := must.Value(graph.New(mods))
+		out := filepath.Join(t.TempDir(), "map.svg")
+
+		// --- When ---
+		err := write(grp, out)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		doc := oskit.ReadFileStr(t, out)
+		assert.Contain(t, `data-module="example.com/a"`, doc)
+	})
+
+	t.Run("error - directory does not exist", func(t *testing.T) {
+		// --- Given ---
+		grp := must.Value(graph.New(nil))
+		out := filepath.Join(t.TempDir(), "gone", "map.svg")
+
+		// --- When ---
+		err := write(grp, out)
+
+		// --- Then ---
+		assert.ErrorIs(t, fs.ErrNotExist, err)
+		assert.ErrorContain(t, "write map file", err)
 	})
 }

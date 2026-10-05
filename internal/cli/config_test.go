@@ -12,6 +12,68 @@ import (
 	"github.com/ctx42/testing/pkg/must"
 )
 
+func Test_newConfig(t *testing.T) {
+	t.Run("arguments parsed", func(t *testing.T) {
+		// --- When ---
+		have, err := newConfig([]string{"-o", "/out.svg", "/src"})
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "/out.svg", have.out)
+		assert.Equal(t, []string{"/src"}, have.roots)
+	})
+
+	t.Run("error - undefined option", func(t *testing.T) {
+		// --- When ---
+		have, err := newConfig([]string{"--nope", "/src"})
+
+		// --- Then ---
+		assert.ErrorContain(t, "flag provided but not defined: -nope", err)
+		assert.Nil(t, have)
+	})
+}
+
+func Test_config_flags(t *testing.T) {
+	t.Run("options registered", func(t *testing.T) {
+		// --- Given ---
+		cfg := &config{}
+
+		// --- When ---
+		have := cfg.flags()
+
+		// --- Then ---
+		assert.NotNil(t, have)
+		for _, name := range []string{
+			"include", "i", "exclude", "e", "out", "o", "config", "c",
+			"web", "yes", "y", "help", "h",
+		} {
+			assert.NotNil(t, cfg.fs.Lookup(name))
+		}
+	})
+
+	t.Run("values applied", func(t *testing.T) {
+		// --- Given ---
+		cfg := &config{}
+		apply := cfg.flags()
+		must.Nil(cfg.fs.Parse([]string{
+			"-i", "a/*", "-e", "b/*", "-o", "out.svg", "-c", "m.yaml",
+			"--web", "-y", "-h",
+		}))
+
+		// --- When ---
+		apply()
+
+		// --- Then ---
+		assert.Equal(t, []string{"a/*"}, cfg.include)
+		assert.Equal(t, []string{"b/*"}, cfg.exclude)
+		assert.Equal(t, "out.svg", cfg.out)
+		assert.Equal(t, "m.yaml", cfg.conf)
+		assert.True(t, cfg.web)
+		assert.True(t, cfg.yes)
+		assert.True(t, cfg.showHelp)
+	})
+}
+
 func Test_config_parse(t *testing.T) {
 	t.Run("relative paths are made absolute", func(t *testing.T) {
 		// --- Given ---
@@ -238,6 +300,135 @@ func Test_config_parse(t *testing.T) {
 		// --- Then ---
 		assert.ErrorContain(t, "invalid module path glob", err)
 	})
+}
+
+func Test_config_parseConf(t *testing.T) {
+	t.Run("relative path resolved", func(t *testing.T) {
+		// --- Given ---
+		cfg := parsedConfig(t, "-c", "modmap.yaml", "a", "b")
+
+		// --- When ---
+		err := cfg.parseConf("/wd")
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "/wd/modmap.yaml", cfg.conf)
+		assert.Equal(t, []string{"a", "b"}, cfg.names)
+	})
+
+	t.Run("web with one map", func(t *testing.T) {
+		// --- Given ---
+		cfg := parsedConfig(t, "--web", "-c", "/m.yaml", "a")
+
+		// --- When ---
+		err := cfg.parseConf("/wd")
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "/m.yaml", cfg.conf)
+		assert.Equal(t, []string{"a"}, cfg.names)
+	})
+}
+
+func Test_config_parseConf_tabular(t *testing.T) {
+	tt := []struct {
+		testN string
+
+		args []string
+		want error
+	}{
+		{
+			"error - with output",
+			[]string{"-c", "m.yaml", "-o", "x.svg"},
+			errConfOnly,
+		},
+		{
+			"error - with include",
+			[]string{"-c", "m.yaml", "-i", "x/*"},
+			errConfOnly,
+		},
+		{
+			"error - with exclude",
+			[]string{"-c", "m.yaml", "-e", "x/*"},
+			errConfOnly,
+		},
+		{
+			"error - web without map",
+			[]string{"--web", "-c", "m.yaml"},
+			errWebMap,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.testN, func(t *testing.T) {
+			// --- Given ---
+			cfg := parsedConfig(t, tc.args...)
+
+			// --- When ---
+			err := cfg.parseConf("/wd")
+
+			// --- Then ---
+			assert.ErrorIs(t, tc.want, err)
+		})
+	}
+}
+
+func Test_config_parseDir(t *testing.T) {
+	t.Run("output given", func(t *testing.T) {
+		// --- Given ---
+		cfg := parsedConfig(t, "-o", "out.svg", "src")
+
+		// --- When ---
+		err := cfg.parseDir("/wd")
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"/wd/src"}, cfg.roots)
+		assert.Equal(t, "/wd/out.svg", cfg.out)
+	})
+
+	t.Run("web given", func(t *testing.T) {
+		// --- Given ---
+		cfg := parsedConfig(t, "--web", "/src")
+
+		// --- When ---
+		err := cfg.parseDir("/wd")
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"/src"}, cfg.roots)
+		assert.Equal(t, "", cfg.out)
+	})
+}
+
+func Test_config_parseDir_tabular(t *testing.T) {
+	tt := []struct {
+		testN string
+
+		args []string
+		want error
+	}{
+		{"error - no directory", []string{"-o", "x.svg"}, errNoDir},
+		{
+			"error - two directories",
+			[]string{"-o", "x.svg", "a", "b"},
+			errManyDirs,
+		},
+		{"error - no output", []string{"src"}, errNoOut},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.testN, func(t *testing.T) {
+			// --- Given ---
+			cfg := parsedConfig(t, tc.args...)
+
+			// --- When ---
+			err := cfg.parseDir("/wd")
+
+			// --- Then ---
+			assert.ErrorIs(t, tc.want, err)
+		})
+	}
 }
 
 func Test_config_help(t *testing.T) {
