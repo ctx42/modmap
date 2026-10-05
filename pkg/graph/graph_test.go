@@ -29,6 +29,21 @@ func Test_New(t *testing.T) {
 		assert.Equal(t, 2, have.nodes["a"].Level)
 	})
 
+	t.Run("nil module has no dependencies", func(t *testing.T) {
+		// --- Given ---
+		mods := newMods(map[string][]string{"a": {"b"}, "b": nil})
+		mods["b"] = nil
+
+		// --- When ---
+		have, err := New(mods)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, 2, have.Len())
+		assert.Equal(t, 0, have.nodes["b"].Level)
+		assert.Equal(t, 1, have.nodes["a"].Level)
+	})
+
 	t.Run("the longest path decides the level", func(t *testing.T) {
 		// --- Given ---
 		mods := newMods(map[string][]string{

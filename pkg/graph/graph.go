@@ -22,15 +22,20 @@ type Graph struct {
 	nodes map[string]*Node
 }
 
-// New returns the graph of the given modules. A dependency pointing outside
-// mods is ignored, so the graph never carries a module the filter dropped. It
-// returns a *[CycleError] when the modules depend on each other in a circle.
+// New returns the graph of the given modules, keyed by the module path every
+// node is given. A nil module is a module without dependencies. A dependency
+// pointing outside mods is ignored, so the graph never carries a module the
+// filter dropped. It returns a *[CycleError] when the modules depend on each
+// other in a circle.
 func New(mods map[string]*mod.Module) (*Graph, error) {
 	grp := &Graph{nodes: make(map[string]*Node, len(mods))}
 	for pth := range mods {
 		grp.nodes[pth] = &Node{Path: pth}
 	}
 	for pth, module := range mods {
+		if module == nil {
+			continue
+		}
 		nod := grp.nodes[pth]
 		for _, dep := range module.Deps() {
 			if _, ok := grp.nodes[dep]; !ok {
