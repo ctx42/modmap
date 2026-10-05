@@ -6,10 +6,13 @@ package cli
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"testing/iotest"
 
 	"github.com/ctx42/ring/pkg/ring/ringtest"
 	"github.com/ctx42/testing/pkg/assert"
@@ -74,6 +77,24 @@ func Test_prompt(t *testing.T) {
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.True(t, have)
+		assert.Equal(t, "render it? ", tst.Stderr())
+	})
+
+	t.Run("error - read fails after partial answer", func(t *testing.T) {
+		// --- Given ---
+		errRead := errors.New("read failed")
+		src := io.MultiReader(strings.NewReader("y"), iotest.ErrReader(errRead))
+
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+		rng.SetStdin(src)
+
+		// --- When ---
+		have, err := prompt(t.Context(), rng, "render it? ")
+
+		// --- Then ---
+		assert.ErrorIs(t, errRead, err)
+		assert.False(t, have)
 		assert.Equal(t, "render it? ", tst.Stderr())
 	})
 

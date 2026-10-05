@@ -6,6 +6,7 @@ package cli
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -67,10 +68,7 @@ func prompt(
 		return false, ctx.Err()
 	case rpl = <-rpls:
 	}
-	if rpl.err != nil && rpl.line == "" {
-		if rpl.err == io.EOF {
-			return false, nil
-		}
+	if rpl.err != nil && !errors.Is(rpl.err, io.EOF) {
 		return false, fmt.Errorf("read answer: %w", rpl.err)
 	}
 	answer := strings.ToLower(strings.TrimSpace(rpl.line))
