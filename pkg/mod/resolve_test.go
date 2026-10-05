@@ -5,8 +5,10 @@ package mod
 
 import (
 	"context"
+	"io/fs"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"testing"
 
 	"github.com/ctx42/testing/pkg/assert"
@@ -118,6 +120,91 @@ func Test_Resolver_Resolve(t *testing.T) {
 		assert.Len(t, 2, mods)
 	})
 
+	t.Run("local replacement is read from disk", func(t *testing.T) {
+		// --- Given ---
+		root := t.TempDir()
+		dirA := filepath.Dir(writeMod(t, ""+
+			"module example.com/a\n"+
+			"require example.com/b v1.0.0\n"+
+			"replace example.com/b => ../b\n",
+			root, "a",
+		))
+		writeMod(t, ""+
+			"module example.com/b\n"+
+			"require example.com/c v1.0.0\n",
+			root, "b",
+		)
+
+		fkf := &fakeFetcher{mods: map[string]string{
+			"example.com/c@v1.0.0": "module example.com/c\n",
+		}}
+		mods := map[string]*Module{
+			"example.com/a": newModule("example.com/a", dirA, "example.com/b"),
+		}
+		rsv := newTestResolver(Filter{}, fkf)
+
+		// --- When ---
+		err := rsv.Resolve(t.Context(), mods)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"example.com/c"}, mods["example.com/b"].Deps())
+		assert.Equal(t, []string{"example.com/c@v1.0.0"}, fkf.calls)
+	})
+
+	t.Run("version replacement is fetched", func(t *testing.T) {
+		// --- Given ---
+		dirA := filepath.Dir(writeMod(t, ""+
+			"module example.com/a\n"+
+			"require example.com/x v1.0.0\n"+
+			"replace example.com/x => example.com/fork v1.2.3\n",
+			t.TempDir(), "a",
+		))
+
+		fkf := &fakeFetcher{mods: map[string]string{
+			"example.com/fork@v1.2.3": "" +
+				"module example.com/fork\n" +
+				"require example.com/p v1.0.0\n",
+			"example.com/p@v1.0.0": "module example.com/p\n",
+		}}
+		mods := map[string]*Module{
+			"example.com/a": newModule("example.com/a", dirA, "example.com/x"),
+		}
+		rsv := newTestResolver(Filter{}, fkf)
+
+		// --- When ---
+		err := rsv.Resolve(t.Context(), mods)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"example.com/p"}, mods["example.com/x"].Deps())
+		want := []string{"example.com/fork@v1.2.3", "example.com/p@v1.0.0"}
+		assert.Equal(t, want, fkf.calls)
+	})
+
+	t.Run("error - local replacement without module file", func(t *testing.T) {
+		// --- Given ---
+		dirA := filepath.Dir(writeMod(t, ""+
+			"module example.com/a\n"+
+			"require example.com/b v1.0.0\n"+
+			"replace example.com/b => ../b\n",
+			t.TempDir(), "a",
+		))
+
+		fkf := &fakeFetcher{mods: map[string]string{}}
+		mods := map[string]*Module{
+			"example.com/a": newModule("example.com/a", dirA, "example.com/b"),
+		}
+		rsv := newTestResolver(Filter{}, fkf)
+
+		// --- When ---
+		err := rsv.Resolve(t.Context(), mods)
+
+		// --- Then ---
+		assert.ErrorIs(t, fs.ErrNotExist, err)
+		assert.Empty(t, fkf.calls)
+	})
+
 	t.Run("filtered requirements are not fetched", func(t *testing.T) {
 		// --- Given ---
 		fkf := &fakeFetcher{mods: map[string]string{
@@ -197,6 +284,135 @@ func Test_Resolver_Close(t *testing.T) {
 	// --- Then ---
 	assert.NoError(t, err)
 	assert.True(t, fkf.closed)
+}
+
+func Test_readReplaces(t *testing.T) {
+	t.Run("lowest module path wins", func(t *testing.T) {
+		// --- Given ---
+		root := t.TempDir()
+		dirA := filepath.Dir(writeMod(t, ""+
+			"module example.com/a\n"+
+			"replace example.com/x => ../x\n",
+			root, "a",
+		))
+		dirB := filepath.Dir(writeMod(t, ""+
+			"module example.com/b\n"+
+			"replace example.com/x v1.0.0 => example.com/y v1.1.0\n"+
+			"replace example.com/x => ../other\n",
+			root, "b",
+		))
+		mods := map[string]*Module{
+			"example.com/a": {Path: "example.com/a", Dir: dirA},
+			"example.com/b": {Path: "example.com/b", Dir: dirB},
+			"example.com/c": {Path: "example.com/c"},
+			"example.com/d": {Path: "example.com/d", Dir: root},
+		}
+
+		// --- When ---
+		have, err := readReplaces(mods)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := replaces{
+			{Path: "example.com/x"}: {
+				dir: filepath.Join(root, "x"),
+			},
+			{Path: "example.com/x", Ver: "v1.0.0"}: {
+				pth: "example.com/y",
+				ver: "v1.1.0",
+			},
+		}
+		assert.Equal(t, want, have)
+	})
+
+	t.Run("error - malformed module file", func(t *testing.T) {
+		// --- Given ---
+		dir := filepath.Dir(writeMod(t, "module\n", t.TempDir(), "a"))
+		mods := map[string]*Module{
+			"example.com/a": {Path: "example.com/a", Dir: dir},
+		}
+
+		// --- When ---
+		have, err := readReplaces(mods)
+
+		// --- Then ---
+		assert.ErrorContain(t, "parse module file", err)
+		assert.Nil(t, have)
+	})
+}
+
+func Test_newReplacement_tabular(t *testing.T) {
+	tt := []struct {
+		testN string
+
+		pth  string
+		ver  string
+		want replacement
+	}{
+		{
+			"version",
+			"example.com/y",
+			"v1.0.0",
+			replacement{pth: "example.com/y", ver: "v1.0.0"},
+		},
+		{"relative dir", "../y", "", replacement{dir: "/src/y"}},
+		{"absolute dir", "/opt/y", "", replacement{dir: "/opt/y"}},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.testN, func(t *testing.T) {
+			// --- When ---
+			have := newReplacement("/src/a", tc.pth, tc.ver)
+
+			// --- Then ---
+			assert.Equal(t, tc.want, have)
+		})
+	}
+}
+
+func Test_replaces_lookup_tabular(t *testing.T) {
+	rps := replaces{
+		{Path: "example.com/x"}:                {dir: "/src/x"},
+		{Path: "example.com/x", Ver: "v1.0.0"}: {dir: "/src/x1"},
+	}
+
+	tt := []struct {
+		testN string
+
+		req    Require
+		want   replacement
+		wFound bool
+	}{
+		{
+			"exact version",
+			Require{Path: "example.com/x", Ver: "v1.0.0"},
+			replacement{dir: "/src/x1"},
+			true,
+		},
+		{
+			"any version",
+			Require{Path: "example.com/x", Ver: "v2.0.0"},
+			replacement{dir: "/src/x"},
+			true,
+		},
+		{
+			"not replaced",
+			Require{Path: "example.com/y", Ver: "v1.0.0"},
+			replacement{},
+			false,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.testN, func(t *testing.T) {
+			// --- When ---
+			have, hFound := rps.lookup(tc.req)
+
+			// --- Then ---
+			assert.Equal(t, tc.want, have)
+			assert.Equal(t, tc.wFound, hFound)
+		})
+	}
 }
 
 func Test_newGoFetcher(t *testing.T) {

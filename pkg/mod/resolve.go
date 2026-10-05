@@ -6,11 +6,16 @@ package mod
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
+
+	"golang.org/x/mod/modfile"
 )
 
 // probeMod is the go.mod file of the throwaway module the go command runs in
@@ -59,11 +64,21 @@ func NewResolver(
 // directory on disk keeps the requirements read from that disk copy; for a
 // module which is not on disk, the requirements are the union of the
 // requirements of every version the closure asked for.
+//
+// The replace directives in the go.mod files of the modules on disk are
+// honoured: a requirement replaced by a directory is read from that
+// directory, one replaced by another module version is read from that
+// version. When the modules disagree, the module with the lowest module path
+// wins.
 func (rsv *Resolver) Resolve(
 	ctx context.Context,
 	mods map[string]*Module,
 ) error {
 
+	rps, err := readReplaces(mods)
+	if err != nil {
+		return err
+	}
 	var queue []Require
 	for _, mod := range mods {
 		queue = append(queue, mod.Requires...)
@@ -85,7 +100,7 @@ func (rsv *Resolver) Resolve(
 		if dst, ok := mods[req.Path]; ok && dst.Dir != "" {
 			continue
 		}
-		reqs, err := rsv.expand(ctx, req, mods)
+		reqs, err := rsv.expand(ctx, req, rps, mods)
 		if err != nil {
 			return err
 		}
@@ -94,17 +109,17 @@ func (rsv *Resolver) Resolve(
 	return nil
 }
 
-// expand reads the go.mod file of the required module version, merges its
-// requirements into the module in mods, and returns the requirements to
-// follow next.
+// expand reads the go.mod file of the required module version, or of its
+// replacement, merges its requirements into the module in mods, and returns
+// the requirements to follow next.
 func (rsv *Resolver) expand(
 	ctx context.Context,
 	req Require,
+	rps replaces,
 	mods map[string]*Module,
 ) ([]Require, error) {
 
-	rsv.logf("resolving %s@%s", req.Path, req.Ver)
-	data, err := rsv.fch.fetch(ctx, req.Path, req.Ver)
+	data, err := rsv.read(ctx, req, rps)
 	if err != nil {
 		return nil, err
 	}
@@ -122,8 +137,105 @@ func (rsv *Resolver) expand(
 	return src.Requires, nil
 }
 
+// read returns the content of the go.mod file of the required module version
+// or of its replacement.
+func (rsv *Resolver) read(
+	ctx context.Context,
+	req Require,
+	rps replaces,
+) ([]byte, error) {
+
+	rpl, ok := rps.lookup(req)
+	switch {
+	case !ok:
+		rsv.logf("resolving %s@%s", req.Path, req.Ver)
+		return rsv.fch.fetch(ctx, req.Path, req.Ver)
+
+	case rpl.dir != "":
+		rsv.logf("resolving %s@%s => %s", req.Path, req.Ver, rpl.dir)
+		pth := filepath.Join(rpl.dir, "go.mod")
+		data, err := os.ReadFile(pth) //nolint:gosec
+		if err != nil {
+			return nil, fmt.Errorf("read module file: %w", err)
+		}
+		return data, nil
+
+	default:
+		format := "resolving %s@%s => %s@%s"
+		rsv.logf(format, req.Path, req.Ver, rpl.pth, rpl.ver)
+		return rsv.fch.fetch(ctx, rpl.pth, rpl.ver)
+	}
+}
+
 // Close removes the temporary resources the resolver created.
 func (rsv *Resolver) Close() error { return rsv.fch.close() }
+
+// replacement is what a replace directive substitutes for a requirement:
+// either a directory or another module version.
+type replacement struct {
+	dir string // Directory of a local replacement, empty otherwise.
+	pth string // Module path of a version replacement.
+	ver string // Module version of a version replacement.
+}
+
+// replaces maps the replaced requirements to their replacements. A key with
+// an empty version replaces every version of the module path.
+type replaces map[Require]replacement
+
+// readReplaces returns the replace directives of the go.mod files of the
+// modules on disk. A module whose directory holds no go.mod file replaces
+// nothing.
+func readReplaces(mods map[string]*Module) (replaces, error) {
+	rps := make(replaces)
+	for _, name := range slices.Sorted(maps.Keys(mods)) {
+		mod := mods[name]
+		if mod.Dir == "" {
+			continue
+		}
+		pth := filepath.Join(mod.Dir, "go.mod")
+		data, err := os.ReadFile(pth) //nolint:gosec
+		if errors.Is(err, fs.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("read module file: %w", err)
+		}
+		fil, err := modfile.Parse(pth, data, nil)
+		if err != nil {
+			return nil, fmt.Errorf("parse module file: %w", err)
+		}
+		for _, rep := range fil.Replace {
+			key := Require{Path: rep.Old.Path, Ver: rep.Old.Version}
+			if _, ok := rps[key]; ok {
+				continue
+			}
+			rps[key] = newReplacement(mod.Dir, rep.New.Path, rep.New.Version)
+		}
+	}
+	return rps, nil
+}
+
+// newReplacement returns the replacement a replace directive in the go.mod
+// file in dir names. A relative replacement directory is relative to dir.
+func newReplacement(dir, pth, ver string) replacement {
+	if ver != "" {
+		return replacement{pth: pth, ver: ver}
+	}
+	if !filepath.IsAbs(pth) {
+		pth = filepath.Join(dir, pth)
+	}
+	return replacement{dir: pth}
+}
+
+// lookup returns the replacement of the required module version: the one
+// naming that version, else the one replacing every version.
+func (rps replaces) lookup(req Require) (replacement, bool) {
+	if rpl, ok := rps[req]; ok {
+		return rpl, true
+	}
+	rpl, ok := rps[Require{Path: req.Path}]
+	return rpl, ok
+}
 
 // goFetcher reads go.mod files with the go command, which uses the module
 // cache first and the module proxy only when the cache misses.
