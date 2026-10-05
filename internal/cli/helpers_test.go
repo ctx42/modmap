@@ -5,10 +5,15 @@ package cli
 
 import (
 	"errors"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/ctx42/ring/pkg/ring/ringtest"
 	"github.com/ctx42/testing/pkg/assert"
+	"github.com/ctx42/testing/pkg/must"
+	"github.com/ctx42/testkit/pkg/oskit"
 
 	"github.com/ctx42/modmap/pkg/mod"
 )
@@ -71,6 +76,82 @@ func Test_abs_tabular(t *testing.T) {
 			assert.Equal(t, tc.want, abs(tc.wd, tc.pth))
 		})
 	}
+}
+
+func Test_replaceFile(t *testing.T) {
+	t.Run("new file", func(t *testing.T) {
+		// --- Given ---
+		pth := filepath.Join(t.TempDir(), "map.svg")
+
+		// --- When ---
+		err := replaceFile(pth, []byte("<svg/>"))
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "<svg/>", oskit.ReadFileStr(t, pth))
+		inf := must.Value(os.Stat(pth))
+		assert.Equal(t, os.FileMode(0o644), inf.Mode().Perm())
+	})
+
+	t.Run("existing file keeps its mode", func(t *testing.T) {
+		// --- Given ---
+		dir := t.TempDir()
+		pth := oskit.Create(t, "<svg id=\"old\"/>", dir, "map.svg")
+		must.Nil(os.Chmod(pth, 0o640))
+
+		// --- When ---
+		err := replaceFile(pth, []byte("<svg/>"))
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "<svg/>", oskit.ReadFileStr(t, pth))
+		inf := must.Value(os.Stat(pth))
+		assert.Equal(t, os.FileMode(0o640), inf.Mode().Perm())
+		assert.Len(t, 1, oskit.List(t, dir))
+	})
+
+	t.Run("link target is replaced", func(t *testing.T) {
+		// --- Given ---
+		tgt := oskit.Create(t, "<svg id=\"old\"/>", t.TempDir(), "map.svg")
+
+		lnk := filepath.Join(t.TempDir(), "link.svg")
+		must.Nil(os.Symlink(tgt, lnk))
+
+		// --- When ---
+		err := replaceFile(lnk, []byte("<svg/>"))
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "<svg/>", oskit.ReadFileStr(t, tgt))
+		inf := must.Value(os.Lstat(lnk))
+		assert.True(t, inf.Mode()&os.ModeSymlink != 0)
+	})
+
+	t.Run("error - directory does not exist", func(t *testing.T) {
+		// --- Given ---
+		pth := filepath.Join(t.TempDir(), "gone", "map.svg")
+
+		// --- When ---
+		err := replaceFile(pth, []byte("<svg/>"))
+
+		// --- Then ---
+		assert.ErrorIs(t, fs.ErrNotExist, err)
+		assert.False(t, oskit.PathExists(t, pth))
+	})
+
+	t.Run("error - name taken by a directory", func(t *testing.T) {
+		// --- Given ---
+		dir := t.TempDir()
+		pth := oskit.MkdirAll(t, dir, "map.svg")
+
+		// --- When ---
+		err := replaceFile(pth, []byte("<svg/>"))
+
+		// --- Then ---
+		var lne *os.LinkError
+		assert.ErrorAs(t, &lne, err)
+		assert.Len(t, 1, oskit.List(t, dir))
+	})
 }
 
 func Test_fail(t *testing.T) {

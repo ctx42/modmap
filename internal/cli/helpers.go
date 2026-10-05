@@ -5,6 +5,8 @@ package cli
 
 import (
 	"fmt"
+	"io/fs"
+	"os"
 	"path/filepath"
 
 	"github.com/ctx42/ring/pkg/ring"
@@ -28,6 +30,36 @@ func abs(wd, pth string) string {
 		return pth
 	}
 	return filepath.Join(wd, pth)
+}
+
+// replaceFile writes data to the file at pth through a temporary file renamed
+// over it, so a failed write never leaves pth truncated. An existing file keeps
+// its mode, a new one is created with mode 0644. When pth is a symbolic link,
+// its target is replaced.
+func replaceFile(pth string, data []byte) error {
+	if dst, err := filepath.EvalSymlinks(pth); err == nil {
+		pth = dst
+	}
+	perm := fs.FileMode(0o644)
+	if inf, err := os.Stat(pth); err == nil {
+		perm = inf.Mode().Perm()
+	}
+	tmp, err := os.CreateTemp(filepath.Dir(pth), filepath.Base(pth)+".*")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = os.Remove(tmp.Name()) }()
+	if _, err = tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err = tmp.Close(); err != nil {
+		return err
+	}
+	if err = os.Chmod(tmp.Name(), perm); err != nil {
+		return err
+	}
+	return os.Rename(tmp.Name(), pth)
 }
 
 // fail writes err to stderr decorated for the user. It is the single place

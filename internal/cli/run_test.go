@@ -5,6 +5,7 @@ package cli
 
 import (
 	"context"
+	"io/fs"
 	"path/filepath"
 	"testing"
 
@@ -234,7 +235,8 @@ func Test_generate(t *testing.T) {
 		err := generate(t.Context(), rng, &config{}, spc)
 
 		// --- Then ---
-		assert.ErrorContain(t, "create map file", err)
+		assert.ErrorIs(t, fs.ErrNotExist, err)
+		assert.ErrorContain(t, "write map file", err)
 
 		assert.Contain(t, "graph has 1 modules", tst.Stderr())
 	})

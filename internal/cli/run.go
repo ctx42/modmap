@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/ctx42/ring/pkg/ring"
@@ -158,22 +157,19 @@ func show(
 	return err
 }
 
-// write renders the graph into the file at pth.
+// write renders the graph into the file at pth. The map is rendered in full
+// before the file is replaced, so a failure leaves the previous map intact.
 func write(grp *graph.Graph, pth string) error {
 	rnd, err := svg.NewRenderer()
 	if err != nil {
 		return err
 	}
-	fil, err := os.Create(pth) //nolint:gosec
-	if err != nil {
-		return fmt.Errorf("create map file: %w", err)
-	}
-	if err = rnd.Render(grp, fil); err != nil {
-		_ = fil.Close()
+	buf := &bytes.Buffer{}
+	if err = rnd.Render(grp, buf); err != nil {
 		return err
 	}
-	if err = fil.Close(); err != nil {
-		return fmt.Errorf("close map file: %w", err)
+	if err = replaceFile(pth, buf.Bytes()); err != nil {
+		return fmt.Errorf("write map file: %w", err)
 	}
 	return nil
 }
