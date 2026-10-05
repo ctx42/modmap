@@ -78,9 +78,10 @@ func parseMod(pth string, flt Filter) (*Module, error) {
 
 // parseModData returns the module described by the go.mod file content. The
 // pth is used in the parse error messages only. Direct requirements not
-// passing flt are dropped.
+// passing flt are dropped. Directives the parser does not know, such as ones
+// added by a newer Go release, are ignored.
 func parseModData(pth string, data []byte, flt Filter) (*Module, error) {
-	fil, err := modfile.Parse(pth, data, nil)
+	fil, err := modfile.ParseLax(pth, data, nil)
 	if err != nil {
 		return nil, fmt.Errorf("parse module file: %w", err)
 	}

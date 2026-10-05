@@ -73,6 +73,22 @@ func Test_parseModData(t *testing.T) {
 		assert.Equal(t, want, have.Requires)
 	})
 
+	t.Run("unknown directive", func(t *testing.T) {
+		// --- Given ---
+		data := []byte("" +
+			"module example.com/a\n" +
+			"future example.com/x\n" +
+			"require example.com/b v1.0.0\n")
+
+		// --- When ---
+		have, err := parseModData("go.mod", data, Filter{})
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := []Require{{Path: "example.com/b", Ver: "v1.0.0"}}
+		assert.Equal(t, want, have.Requires)
+	})
+
 	t.Run("module without requirements", func(t *testing.T) {
 		// --- Given ---
 		data := []byte("module example.com/a\n")
