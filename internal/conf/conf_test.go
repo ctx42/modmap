@@ -85,6 +85,25 @@ func Test_Load(t *testing.T) {
 		assert.Nil(t, have)
 	})
 
+	t.Run("error - unknown key", func(t *testing.T) {
+		// --- Given ---
+		pth := writeConf(t, ""+
+			"maps:\n"+
+			"  - name: a\n"+
+			"    dirs: [src]\n"+
+			"    exlude: [example.com/x]\n"+
+			"    out: a.svg\n",
+			t.TempDir(),
+		)
+
+		// --- When ---
+		have, err := Load(pth)
+
+		// --- Then ---
+		assert.ErrorRegexp(t, "^parse configuration: .*exlude", err)
+		assert.Nil(t, have)
+	})
+
 	t.Run("error - invalid configuration", func(t *testing.T) {
 		// --- Given ---
 		pth := writeConf(t, "maps: []\n", t.TempDir())

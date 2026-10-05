@@ -66,14 +66,16 @@ type Config struct {
 }
 
 // Load reads the configuration file at pth. The relative directory and output
-// paths it holds are resolved against the directory of the file itself.
+// paths it holds are resolved against the directory of the file itself. A key
+// the configuration does not define is an error.
 func Load(pth string) (*Config, error) {
 	data, err := os.ReadFile(pth) //nolint:gosec
 	if err != nil {
 		return nil, fmt.Errorf("read configuration: %w", err)
 	}
 	cfg := &Config{}
-	if err = yaml.Unmarshal(data, cfg); err != nil {
+	opt := yaml.DisallowUnknownField()
+	if err = yaml.UnmarshalWithOptions(data, cfg, opt); err != nil {
 		return nil, fmt.Errorf("parse configuration: %w", err)
 	}
 	if err = cfg.validate(); err != nil {
