@@ -12,6 +12,7 @@ package view
 import (
 	"bytes"
 	"embed"
+	"errors"
 	"fmt"
 	"html/template"
 	"net/url"
@@ -40,6 +41,10 @@ const (
 	// filePerm is the mode of the page and the map file.
 	filePerm = 0o600
 )
+
+// ErrUnsafeDir is returned when the directory holding the pages is not a
+// directory of the current user's own.
+var ErrUnsafeDir = errors.New("unsafe map directory")
 
 //go:embed page.html
 var pages embed.FS
@@ -75,23 +80,69 @@ func Open(
 // write writes the viewer page and the map it shows into dir, creating the
 // directory when it is not there. It returns the path of the page.
 func write(dir, title string, doc []byte) (string, error) {
-	if err := os.MkdirAll(dir, dirPerm); err != nil {
-		return "", fmt.Errorf("create map directory: %w", err)
+	if err := privateDir(dir); err != nil {
+		return "", err
 	}
 	name := slug(title)
 	htm, err := html(title, name+".svg", doc)
 	if err != nil {
 		return "", err
 	}
-	pth := filepath.Join(dir, name+".html")
-	if err = os.WriteFile(pth, htm, filePerm); err != nil {
-		return "", fmt.Errorf("write map page: %w", err)
-	}
-	mpt := filepath.Join(dir, name+".svg")
-	if err = os.WriteFile(mpt, doc, filePerm); err != nil {
+	if err = replaceFile(dir, name+".svg", doc); err != nil {
 		return "", fmt.Errorf("write map file: %w", err)
 	}
-	return pth, nil
+	if err = replaceFile(dir, name+".html", htm); err != nil {
+		return "", fmt.Errorf("write map page: %w", err)
+	}
+	return filepath.Join(dir, name+".html"), nil
+}
+
+// privateDir creates dir when it is not there and makes sure it is a
+// directory only the current user can reach. It returns [ErrUnsafeDir] for a
+// symbolic link, a non-directory, or a directory of another user.
+func privateDir(dir string) error {
+	if err := os.MkdirAll(dir, dirPerm); err != nil {
+		return fmt.Errorf("create map directory: %w", err)
+	}
+	inf, err := os.Lstat(dir)
+	if err != nil {
+		return fmt.Errorf("create map directory: %w", err)
+	}
+	if !inf.IsDir() {
+		return fmt.Errorf("%w: not a directory: %s", ErrUnsafeDir, dir)
+	}
+	if !ownedByUser(inf) {
+		return fmt.Errorf("%w: owned by another user: %s", ErrUnsafeDir, dir)
+	}
+	if inf.Mode().Perm() == dirPerm {
+		return nil
+	}
+	if err = os.Chmod(dir, dirPerm); err != nil {
+		return fmt.Errorf("create map directory: %w", err)
+	}
+	return nil
+}
+
+// replaceFile writes data to the named file in dir through a temporary file
+// renamed over it, so a reader never sees a partial file and a symbolic link
+// in its place is replaced rather than followed.
+func replaceFile(dir, name string, data []byte) error {
+	tmp, err := os.CreateTemp(dir, name+".*")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = os.Remove(tmp.Name()) }()
+	if _, err = tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err = tmp.Close(); err != nil {
+		return err
+	}
+	if err = os.Chmod(tmp.Name(), filePerm); err != nil {
+		return err
+	}
+	return os.Rename(tmp.Name(), filepath.Join(dir, name))
 }
 
 // html renders the viewer page showing the map under the given title, with

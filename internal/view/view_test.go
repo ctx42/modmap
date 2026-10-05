@@ -4,10 +4,12 @@
 package view
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/ctx42/testing/pkg/assert"
+	"github.com/ctx42/testing/pkg/must"
 	"github.com/ctx42/testkit/pkg/oskit"
 )
 
@@ -95,6 +97,76 @@ func Test_write(t *testing.T) {
 		assert.Contain(t, "<svg id=\"new\"/>", oskit.ReadFileStr(t, have))
 
 		assert.Equal(t, 2, len(oskit.List(t, dir)))
+	})
+
+	t.Run("a planted link is replaced not followed", func(t *testing.T) {
+		// --- Given ---
+		tgt := oskit.Create(t, "keep", t.TempDir(), "target")
+
+		dir := t.TempDir()
+		must.Nil(os.Symlink(tgt, filepath.Join(dir, "ctx42.html")))
+
+		// --- When ---
+		have, err := write(dir, "ctx42", []byte("<svg/>"))
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Contain(t, "<svg/>", oskit.ReadFileStr(t, have))
+		assert.Equal(t, "keep", oskit.ReadFileStr(t, tgt))
+	})
+
+	t.Run("an open directory is made private", func(t *testing.T) {
+		// --- Given ---
+		dir := t.TempDir()
+		must.Nil(os.Chmod(dir, 0o777))
+
+		// --- When ---
+		_, err := write(dir, "ctx42", []byte("<svg/>"))
+
+		// --- Then ---
+		assert.NoError(t, err)
+		inf := must.Value(os.Stat(dir))
+		assert.Equal(t, os.FileMode(dirPerm), inf.Mode().Perm())
+	})
+
+	t.Run("error - the directory is a link", func(t *testing.T) {
+		// --- Given ---
+		dir := filepath.Join(t.TempDir(), "link")
+		must.Nil(os.Symlink(t.TempDir(), dir))
+
+		// --- When ---
+		have, err := write(dir, "ctx42", []byte("<svg/>"))
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrUnsafeDir, err)
+		assert.Equal(t, "", have)
+	})
+
+	t.Run("error - map file name taken", func(t *testing.T) {
+		// --- Given ---
+		dir := t.TempDir()
+		oskit.MkdirAll(t, dir, "ctx42.svg")
+
+		// --- When ---
+		have, err := write(dir, "ctx42", []byte("<svg/>"))
+
+		// --- Then ---
+		assert.ErrorContain(t, "write map file", err)
+		assert.Equal(t, "", have)
+		assert.False(t, oskit.PathExists(t, dir, "ctx42.html"))
+	})
+
+	t.Run("error - map page name taken", func(t *testing.T) {
+		// --- Given ---
+		dir := t.TempDir()
+		oskit.MkdirAll(t, dir, "ctx42.html")
+
+		// --- When ---
+		have, err := write(dir, "ctx42", []byte("<svg/>"))
+
+		// --- Then ---
+		assert.ErrorContain(t, "write map page", err)
+		assert.Equal(t, "", have)
 	})
 
 	t.Run("error - the directory cannot be created", func(t *testing.T) {
