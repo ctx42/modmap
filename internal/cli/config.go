@@ -180,7 +180,7 @@ func (cfg *config) help() string {
 		"\n" +
 		"Options:\n" +
 		"%[2]s"
-	return fmt.Sprintf(format, binName, xflag.HelpOptions(cfg.fs))
+	return fmt.Sprintf(format, binName, cfg.fs.HelpOptions())
 }
 
 // usage returns the command usage text without a parsed configuration.
