@@ -10,7 +10,7 @@ require (
 	golang.org/x/term v0.45.0
 )
 
-require golang.org/x/sys v0.48.0 // indirect
+require golang.org/x/sys v0.48.0
 
 require (
 	github.com/ctx42/goldkit v0.20.0

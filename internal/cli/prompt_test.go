@@ -34,10 +34,14 @@ func Test_confirm(t *testing.T) {
 		assert.True(t, have)
 	})
 
-	t.Run("a wide map is confirmed by yes", func(t *testing.T) {
+	t.Run("yes skips the question on a terminal", func(t *testing.T) {
 		// --- Given ---
+		ctl, trm := openPTY(t)
+		must.Value(ctl.WriteString("n\n"))
+
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
+		rng.SetStdin(trm)
 
 		// --- When ---
 		have, err := confirm(t.Context(), rng, wideLevel+1, true)
@@ -45,8 +49,28 @@ func Test_confirm(t *testing.T) {
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.True(t, have)
-		want := "the widest level holds 21 modules"
-		assert.Contain(t, want, tst.Stderr())
+		want := "" +
+			"the widest level holds 21 modules, " +
+			"the map will be very wide\n"
+		assert.Equal(t, want, tst.Stderr())
+	})
+
+	t.Run("a wide map is asked about on a terminal", func(t *testing.T) {
+		// --- Given ---
+		ctl, trm := openPTY(t)
+		must.Value(ctl.WriteString("y\n"))
+
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+		rng.SetStdin(trm)
+
+		// --- When ---
+		have, err := confirm(t.Context(), rng, wideLevel+1, false)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.True(t, have)
+		assert.Contain(t, "render it anyway? [y/N]: ", tst.Stderr())
 	})
 
 	t.Run("a wide map renders with nobody to ask", func(t *testing.T) {
