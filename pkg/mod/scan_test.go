@@ -6,10 +6,12 @@ package mod
 import (
 	"fmt"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/ctx42/testing/pkg/assert"
+	"github.com/ctx42/testing/pkg/must"
 )
 
 func Test_NewScanner(t *testing.T) {
@@ -93,6 +95,26 @@ func Test_Scanner_Scan(t *testing.T) {
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Len(t, 2, have)
+	})
+
+	t.Run("symlinked root", func(t *testing.T) {
+		// --- Given ---
+		root := t.TempDir()
+		writeMod(t, "module example.com/a\n", root, "a")
+
+		lnk := filepath.Join(t.TempDir(), "link")
+		must.Nil(os.Symlink(root, lnk))
+
+		scn := NewScanner(Filter{}, nil)
+
+		// --- When ---
+		have, err := scn.Scan([]string{lnk})
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Len(t, 1, have)
+		want := filepath.Join(root, "a")
+		assert.Equal(t, want, have["example.com/a"].Dir)
 	})
 
 	t.Run("the module found first wins", func(t *testing.T) {

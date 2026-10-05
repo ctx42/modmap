@@ -31,6 +31,7 @@ func NewScanner(flt Filter, logf func(format string, args ...any)) *Scanner {
 // Scan walks the roots and returns the modules passing the filter keyed by
 // their module path. Every go.mod file found is a module, nested ones
 // included, but the directories named in skipDirs are never descended into.
+// A root that is a symbolic link is followed, the links below it are not.
 // When more than one root holds the same module path, the first one found
 // wins.
 func (scn *Scanner) Scan(roots []string) (map[string]*Module, error) {
@@ -46,13 +47,17 @@ func (scn *Scanner) Scan(roots []string) (map[string]*Module, error) {
 
 // walk adds every module found under the root to mods.
 func (scn *Scanner) walk(root string, mods map[string]*Module) error {
+	dir, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return fmt.Errorf("scan %s: %w", root, err)
+	}
 	walker := func(pth string, ent fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if ent.IsDir() {
 			skip := slices.Contains(skipDirs, ent.Name())
-			if pth != root && skip {
+			if pth != dir && skip {
 				return fs.SkipDir
 			}
 			return nil
@@ -75,7 +80,7 @@ func (scn *Scanner) walk(root string, mods map[string]*Module) error {
 		scn.logf("found %s", mod.Path)
 		return nil
 	}
-	if err := filepath.WalkDir(root, walker); err != nil {
+	if err = filepath.WalkDir(dir, walker); err != nil {
 		return fmt.Errorf("scan %s: %w", root, err)
 	}
 	return nil
