@@ -4,6 +4,7 @@
 package mod
 
 import (
+	"context"
 	"fmt"
 	"io/fs"
 	"path/filepath"
@@ -33,12 +34,16 @@ func NewScanner(flt Filter, logf func(format string, args ...any)) *Scanner {
 // included, but the directories named in skipDirs are never descended into.
 // A root that is a symbolic link is followed, the links below it are not.
 // When more than one root holds the same module path, the first one found
-// wins.
-func (scn *Scanner) Scan(roots []string) (map[string]*Module, error) {
+// wins. The walk stops with the context error once ctx is done.
+func (scn *Scanner) Scan(
+	ctx context.Context,
+	roots []string,
+) (map[string]*Module, error) {
+
 	mods := make(map[string]*Module)
 	for _, root := range roots {
 		scn.logf("scanning %s", root)
-		if err := scn.walk(root, mods); err != nil {
+		if err := scn.walk(ctx, root, mods); err != nil {
 			return nil, err
 		}
 	}
@@ -46,13 +51,21 @@ func (scn *Scanner) Scan(roots []string) (map[string]*Module, error) {
 }
 
 // walk adds every module found under the root to mods.
-func (scn *Scanner) walk(root string, mods map[string]*Module) error {
+func (scn *Scanner) walk(
+	ctx context.Context,
+	root string,
+	mods map[string]*Module,
+) error {
+
 	dir, err := filepath.EvalSymlinks(root)
 	if err != nil {
 		return fmt.Errorf("scan %s: %w", root, err)
 	}
 	walker := func(pth string, ent fs.DirEntry, err error) error {
 		if err != nil {
+			return err
+		}
+		if err = ctx.Err(); err != nil {
 			return err
 		}
 		if ent.IsDir() {

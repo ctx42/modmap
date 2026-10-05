@@ -100,7 +100,7 @@ func generate(
 		_, _ = fmt.Fprintf(rng.Stderr(), format+"\n", args...)
 	}
 	flt := mod.NewFilter(spc.Include, spc.Exclude)
-	mods, err := mod.NewScanner(flt, logf).Scan(spc.Dirs)
+	mods, err := mod.NewScanner(flt, logf).Scan(ctx, spc.Dirs)
 	if err != nil {
 		return err
 	}

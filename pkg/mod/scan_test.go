@@ -4,6 +4,7 @@
 package mod
 
 import (
+	"context"
 	"fmt"
 	"io/fs"
 	"os"
@@ -40,7 +41,7 @@ func Test_Scanner_Scan(t *testing.T) {
 		scn := NewScanner(Filter{}, nil)
 
 		// --- When ---
-		have, err := scn.Scan([]string{root})
+		have, err := scn.Scan(t.Context(), []string{root})
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -57,7 +58,7 @@ func Test_Scanner_Scan(t *testing.T) {
 		scn := NewScanner(Filter{}, nil)
 
 		// --- When ---
-		have, err := scn.Scan([]string{root})
+		have, err := scn.Scan(t.Context(), []string{root})
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -73,7 +74,7 @@ func Test_Scanner_Scan(t *testing.T) {
 		scn := NewScanner(flt, nil)
 
 		// --- When ---
-		have, err := scn.Scan([]string{root})
+		have, err := scn.Scan(t.Context(), []string{root})
 
 		// --- Then ---
 		assert.Len(t, 1, have)
@@ -90,7 +91,7 @@ func Test_Scanner_Scan(t *testing.T) {
 		scn := NewScanner(Filter{}, nil)
 
 		// --- When ---
-		have, err := scn.Scan([]string{rootA, rootB})
+		have, err := scn.Scan(t.Context(), []string{rootA, rootB})
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -108,7 +109,7 @@ func Test_Scanner_Scan(t *testing.T) {
 		scn := NewScanner(Filter{}, nil)
 
 		// --- When ---
-		have, err := scn.Scan([]string{lnk})
+		have, err := scn.Scan(t.Context(), []string{lnk})
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -126,7 +127,7 @@ func Test_Scanner_Scan(t *testing.T) {
 		scn := NewScanner(Filter{}, nil)
 
 		// --- When ---
-		have, err := scn.Scan([]string{rootA, rootB})
+		have, err := scn.Scan(t.Context(), []string{rootA, rootB})
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -146,12 +147,30 @@ func Test_Scanner_Scan(t *testing.T) {
 		scn := NewScanner(Filter{}, logf)
 
 		// --- When ---
-		_, err := scn.Scan([]string{root})
+		_, err := scn.Scan(t.Context(), []string{root})
 
 		// --- Then ---
 		assert.NoError(t, err)
 		want := []string{"scanning " + root, "found example.com/a"}
 		assert.Equal(t, want, msgs)
+	})
+
+	t.Run("error - context cancelled", func(t *testing.T) {
+		// --- Given ---
+		root := t.TempDir()
+		writeMod(t, "module example.com/a\n", root, "a")
+
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+
+		scn := NewScanner(Filter{}, nil)
+
+		// --- When ---
+		have, err := scn.Scan(ctx, []string{root})
+
+		// --- Then ---
+		assert.ErrorIs(t, context.Canceled, err)
+		assert.Nil(t, have)
 	})
 
 	t.Run("error - root does not exist", func(t *testing.T) {
@@ -160,7 +179,7 @@ func Test_Scanner_Scan(t *testing.T) {
 		scn := NewScanner(Filter{}, nil)
 
 		// --- When ---
-		have, err := scn.Scan([]string{root})
+		have, err := scn.Scan(t.Context(), []string{root})
 
 		// --- Then ---
 		assert.ErrorIs(t, fs.ErrNotExist, err)
@@ -175,7 +194,7 @@ func Test_Scanner_Scan(t *testing.T) {
 		scn := NewScanner(Filter{}, nil)
 
 		// --- When ---
-		have, err := scn.Scan([]string{root})
+		have, err := scn.Scan(t.Context(), []string{root})
 
 		// --- Then ---
 		assert.ErrorContain(t, "parse module file", err)

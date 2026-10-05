@@ -17,7 +17,9 @@ go get github.com/ctx42/modmap/pkg/mod
 ```go
 flt := mod.NewFilter([]string{"github.com/ctx42/*"}, nil)
 
-mods, err := mod.NewScanner(flt, nil).Scan([]string{"/home/user/src"})
+ctx := context.Background()
+roots := []string{"/home/user/src"}
+mods, err := mod.NewScanner(flt, nil).Scan(ctx, roots)
 if err != nil {
     return err
 }
@@ -28,7 +30,7 @@ if err != nil {
 }
 defer func() { _ = rsv.Close() }()
 
-if err = rsv.Resolve(context.Background(), mods); err != nil {
+if err = rsv.Resolve(ctx, mods); err != nil {
     return err
 }
 
