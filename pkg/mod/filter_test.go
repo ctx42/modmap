@@ -4,6 +4,7 @@
 package mod
 
 import (
+	"path"
 	"testing"
 
 	"github.com/ctx42/testing/pkg/assert"
@@ -24,6 +25,7 @@ func Test_ValidateGlob(t *testing.T) {
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrInvGlob, err)
+		assert.ErrorIs(t, path.ErrBadPattern, err)
 		assert.ErrorContain(t, "[", err)
 	})
 }

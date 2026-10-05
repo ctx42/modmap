@@ -15,7 +15,7 @@ var ErrInvGlob = errors.New("invalid module path glob")
 // ValidateGlob returns an error when glob is not a valid module path glob.
 func ValidateGlob(glob string) error {
 	if _, err := path.Match(glob, ""); err != nil {
-		return fmt.Errorf("%w: %s", ErrInvGlob, glob)
+		return fmt.Errorf("%w: %s: %w", ErrInvGlob, glob, err)
 	}
 	return nil
 }
