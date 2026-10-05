@@ -4,6 +4,7 @@
 package conf
 
 import (
+	"io/fs"
 	"path/filepath"
 	"testing"
 
@@ -67,6 +68,7 @@ func Test_Load(t *testing.T) {
 		have, err := Load(pth)
 
 		// --- Then ---
+		assert.ErrorIs(t, fs.ErrNotExist, err)
 		assert.ErrorContain(t, "read configuration", err)
 		assert.Nil(t, have)
 	})

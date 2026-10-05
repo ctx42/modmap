@@ -5,6 +5,7 @@ package mod
 
 import (
 	"fmt"
+	"io/fs"
 	"path/filepath"
 	"testing"
 
@@ -140,6 +141,7 @@ func Test_Scanner_Scan(t *testing.T) {
 		have, err := scn.Scan([]string{root})
 
 		// --- Then ---
+		assert.ErrorIs(t, fs.ErrNotExist, err)
 		assert.ErrorContain(t, "scan "+root, err)
 		assert.Nil(t, have)
 	})

@@ -142,6 +142,7 @@ func Test_Renderer_Render(t *testing.T) {
 		err := rnd.Render(newGraph(nil), dst)
 
 		// --- Then ---
+		assert.ErrorIs(t, errWrite, err)
 		assert.ErrorContain(t, "write map", err)
 	})
 }
@@ -378,9 +379,10 @@ func Test_num_tabular(t *testing.T) {
 	}
 }
 
+// errWrite is the error [failWriter] fails every write with.
+var errWrite = errors.New("write refused")
+
 // failWriter is a writer failing every write.
 type failWriter struct{}
 
-func (fwr *failWriter) Write([]byte) (int, error) {
-	return 0, errors.New("write refused")
-}
+func (fwr *failWriter) Write([]byte) (int, error) { return 0, errWrite }

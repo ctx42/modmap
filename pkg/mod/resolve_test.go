@@ -6,6 +6,7 @@ package mod
 import (
 	"context"
 	"os"
+	"os/exec"
 	"testing"
 
 	"github.com/ctx42/testing/pkg/assert"
@@ -225,6 +226,8 @@ func Test_goFetcher_fetch(t *testing.T) {
 		)
 
 		// --- Then ---
+		var exe *exec.ExitError
+		assert.ErrorAs(t, &exe, err)
 		assert.ErrorContain(t, "query example.com/nope@v1.0.0", err)
 		assert.Nil(t, have)
 	})
