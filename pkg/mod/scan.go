@@ -8,11 +8,8 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
-	"slices"
+	"strings"
 )
-
-// skipDirs holds the names of the directories the scan never descends into.
-var skipDirs = []string{".git", "testdata", "vendor"}
 
 // Scanner walks directory trees collecting the Go modules they hold.
 type Scanner struct {
@@ -31,7 +28,9 @@ func NewScanner(flt Filter, logf func(format string, args ...any)) *Scanner {
 
 // Scan walks the roots and returns the modules passing the filter keyed by
 // their module path. Every go.mod file found is a module, nested ones
-// included, but the directories named in skipDirs are never descended into.
+// included, but the scan never descends into the directories the go command
+// ignores (names starting with "." or "_", "testdata"), "vendor" directories,
+// or module cache entries (names holding "@").
 // A root that is a symbolic link is followed, the links below it are not.
 // When more than one root holds the same module path, the first one found
 // wins. The walk stops with the context error once ctx is done.
@@ -69,8 +68,7 @@ func (scn *Scanner) walk(
 			return err
 		}
 		if ent.IsDir() {
-			skip := slices.Contains(skipDirs, ent.Name())
-			if pth != dir && skip {
+			if pth != dir && skipDir(ent.Name()) {
 				return fs.SkipDir
 			}
 			return nil
@@ -97,4 +95,18 @@ func (scn *Scanner) walk(
 		return fmt.Errorf("scan %s: %w", root, err)
 	}
 	return nil
+}
+
+// skipDir reports whether the scan skips the directory with the given name.
+func skipDir(name string) bool {
+	switch {
+	case strings.HasPrefix(name, "."), strings.HasPrefix(name, "_"):
+		return true
+
+	case name == "testdata", name == "vendor":
+		return true
+
+	default:
+		return strings.Contains(name, "@")
+	}
 }

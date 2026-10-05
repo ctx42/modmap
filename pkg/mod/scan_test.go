@@ -38,6 +38,9 @@ func Test_Scanner_Scan(t *testing.T) {
 		writeMod(t, "module example.com/x\n", root, skipped)
 		writeMod(t, "module example.com/y\n", root, "vendor", "y")
 		writeMod(t, "module example.com/z\n", root, ".git", "z")
+		writeMod(t, "module example.com/h\n", root, ".hidden", "h")
+		writeMod(t, "module example.com/u\n", root, "_old", "u")
+		writeMod(t, "module example.com/c\n", root, "mod", "c@v1.0.0")
 		scn := NewScanner(Filter{}, nil)
 
 		// --- When ---
@@ -200,4 +203,31 @@ func Test_Scanner_Scan(t *testing.T) {
 		assert.ErrorContain(t, "parse module file", err)
 		assert.Nil(t, have)
 	})
+}
+
+func Test_skipDir_tabular(t *testing.T) {
+	tt := []struct {
+		testN string
+
+		name string
+		want bool
+	}{
+		{"plain", "src", false},
+		{"dot", ".git", true},
+		{"underscore", "_old", true},
+		{"testdata", "testdata", true},
+		{"vendor", "vendor", true},
+		{"module cache entry", "ring@v0.8.0", true},
+		{"inner dot", "a.b", false},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.testN, func(t *testing.T) {
+			// --- When ---
+			have := skipDir(tc.name)
+
+			// --- Then ---
+			assert.Equal(t, tc.want, have)
+		})
+	}
 }

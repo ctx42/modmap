@@ -187,8 +187,9 @@ holding the file, never against the working directory.
 ## How the map is built
 
 - Every `go.mod` under the scanned directories is a module, nested ones
-  included. The `.git`, `testdata`, and `vendor` directories are never
-  descended into.
+  included. Directories whose names start with `.` or `_`, `testdata`
+  and `vendor` directories, and module cache entries (names holding `@`)
+  are never descended into.
 - Only direct requirements are followed; a `// indirect` line is not an
   edge. Each module reached is expanded in turn, so the closure builds
   itself.
