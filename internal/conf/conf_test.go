@@ -286,3 +286,27 @@ func Test_Config_validate_tabular(t *testing.T) {
 		})
 	}
 }
+
+func Test_absPath_tabular(t *testing.T) {
+	tt := []struct {
+		testN string
+
+		pth  string
+		want string
+	}{
+		{"relative", "out/a.svg", "/cfg/out/a.svg"},
+		{"absolute", "/out/a.svg", "/out/a.svg"},
+		{"absolute uncleaned", "/out/../a.svg", "/a.svg"},
+		{"empty", "", ""},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.testN, func(t *testing.T) {
+			// --- When ---
+			have := absPath("/cfg", tc.pth)
+
+			// --- Then ---
+			assert.Equal(t, tc.want, have)
+		})
+	}
+}
