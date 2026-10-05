@@ -26,7 +26,7 @@ func (err *CycleError) Error() string {
 	return "dependency cycle: " + strings.Join(err.Path, " -> ")
 }
 
-// checkCycles returns [CycleError] for the first dependency cycle it finds.
+// checkCycles returns a *[CycleError] for the first dependency cycle it finds.
 func (grp *Graph) checkCycles() error {
 	state := make(map[string]int, len(grp.nodes))
 	var stack []string

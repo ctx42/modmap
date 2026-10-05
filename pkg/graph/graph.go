@@ -24,7 +24,7 @@ type Graph struct {
 
 // New returns the graph of the given modules. A dependency pointing outside
 // mods is ignored, so the graph never carries a module the filter dropped. It
-// returns [CycleError] when the modules depend on each other in a circle.
+// returns a *[CycleError] when the modules depend on each other in a circle.
 func New(mods map[string]*mod.Module) (*Graph, error) {
 	grp := &Graph{nodes: make(map[string]*Node, len(mods))}
 	for pth := range mods {

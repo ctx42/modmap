@@ -21,7 +21,7 @@ go get github.com/ctx42/modmap/pkg/graph
 ```go
 grp, err := graph.New(mods) // map[string]*mod.Module
 if err != nil {
-    return err // graph.CycleError when the modules depend on each other.
+    return err // *graph.CycleError when the modules depend on each other.
 }
 
 for level, nodes := range grp.Levels {
