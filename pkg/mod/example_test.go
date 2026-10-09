@@ -24,6 +24,21 @@ func ExampleNewFilter() {
 	// false
 }
 
+func ExampleAnyOf() {
+	flt := mod.AnyOf(
+		mod.NewFilter([]string{"github.com/ctx42/*"}, nil),
+		mod.NewFilter([]string{"github.com/customer/*"}, nil),
+	)
+
+	fmt.Println(flt.Match("github.com/ctx42/testing"))
+	fmt.Println(flt.Match("github.com/customer/a"))
+	fmt.Println(flt.Match("golang.org/x/mod"))
+	// Output:
+	// true
+	// true
+	// false
+}
+
 func ExampleModule_Deps() {
 	module := &mod.Module{
 		Path: "github.com/ctx42/gomake",
