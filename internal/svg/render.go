@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/ctx42/modmap/pkg/graph"
+	"github.com/ctx42/modmap/pkg/mod"
 )
 
 // Templates of the rendered SVG elements.
@@ -75,14 +76,39 @@ const (
 		` text-anchor="middle">%s</text>` + "\n"
 )
 
+// Column is one map drawn beside the others in a combined image.
+type Column struct {
+	// Name is the map name drawn above the column.
+	Name string
+
+	// Filter decides which modules the column claims.
+	Filter mod.Filter
+}
+
+// column is the geometry of one map column.
+type column struct {
+	name  string  // Map name drawn above the column.
+	left  float64 // The x coordinate of the left side of the column.
+	width float64 // Width of the column.
+}
+
+// cell is the place of one module box: its column and its position on the
+// level within that column.
+type cell struct {
+	col int // Index of the column.
+	pos int // Position on the level, counted from the left.
+}
+
 // layout holds the geometry computed for one graph.
 type layout struct {
-	width  float64 // Canvas width.
-	height float64 // Canvas height.
-	boxW   float64 // Width of every module box.
-	baseY  float64 // Label baseline offset from the box top.
-	badgeY float64 // Badge baseline offset from the box top.
-	levels int     // Number of levels.
+	width  float64            // Canvas width.
+	height float64            // Canvas height.
+	boxW   float64            // Width of every module box.
+	baseY  float64            // Label baseline offset from the box top.
+	badgeY float64            // Badge baseline offset from the box top.
+	levels int                // Number of levels.
+	cols   []column           // Columns from left to right.
+	lefts  map[string]float64 // Box left side keyed by module path.
 }
 
 // boxTop returns the y coordinate of the top of the boxes on the level.
@@ -91,10 +117,9 @@ func (lay layout) boxTop(level int) float64 {
 	return lay.height - marginY - boxHeight - float64(level)*band
 }
 
-// boxLeft returns the x coordinate of the left side of the column.
-func (lay layout) boxLeft(col int) float64 {
-	return marginX + float64(col)*(lay.boxW+gapX)
-}
+// named reports whether the columns are drawn under their map names, which
+// takes two or more of them.
+func (lay layout) named() bool { return len(lay.cols) > 1 }
 
 // Renderer draws the layered module graph as an SVG document.
 type Renderer struct {
@@ -113,12 +138,26 @@ func NewRenderer() (*Renderer, error) {
 // Render writes the map of the graph as a standalone SVG document. Every box
 // carries the module path, its level, the modules which have to be updated
 // when it changes, and the order to update them in.
-func (rnd *Renderer) Render(grp *graph.Graph, dst io.Writer) error {
-	lay := rnd.layout(grp)
+//
+// Every module is drawn once, in the first of the columns whose filter keeps
+// it, or in the first column when none does. Two or more columns are drawn
+// side by side, each under its name and split from the next by a divider;
+// a single column is drawn without its name, and no columns at all draw as
+// one column holding every module. The levels, the lighting, and the update
+// order span the whole image, so a chain crossing columns lights up and is
+// numbered as one.
+func (rnd *Renderer) Render(
+	grp *graph.Graph,
+	cols []Column,
+	dst io.Writer,
+) error {
+
+	lay := rnd.layout(grp, cols)
 	ids := moduleIDs(grp)
 	buf := &bytes.Buffer{}
 	rnd.head(buf, lay, interactCSS(grp, ids))
 	rnd.levels(buf, lay)
+	rnd.columns(buf, lay)
 	cls, bdg := relClasses(grp, ids), badges(grp, ids)
 	rnd.modules(buf, grp, lay, ids, cls, bdg)
 	buf.WriteString("</svg>\n")
@@ -129,9 +168,16 @@ func (rnd *Renderer) Render(grp *graph.Graph, dst io.Writer) error {
 }
 
 // layout computes the geometry of the map. Every box is as wide as the widest
-// label needs, so the levels keep an even rhythm.
-func (rnd *Renderer) layout(grp *graph.Graph) layout {
-	lay := layout{levels: len(grp.Levels)}
+// label needs, so the levels keep an even rhythm, and every column is as wide
+// as its own widest level. Named columns add one row above the top level.
+func (rnd *Renderer) layout(grp *graph.Graph, cols []Column) layout {
+	if len(cols) == 0 {
+		cols = []Column{{}}
+	}
+	lay := layout{
+		levels: len(grp.Levels),
+		lefts:  make(map[string]float64, grp.Len()),
+	}
 	var widest float64
 	for _, lvl := range grp.Levels {
 		for _, nod := range lvl {
@@ -142,10 +188,26 @@ func (rnd *Renderer) layout(grp *graph.Graph) layout {
 	lay.baseY = (boxHeight + rnd.fnt.CapHeight(textSize)) / 2
 	lay.badgeY = badgePad + rnd.fnt.CapHeight(badgeSize)
 
-	cols := float64(grp.Widest())
-	lay.width = 2*marginX + cols*lay.boxW + max(cols-1, 0)*gapX
+	cells, slots := place(grp, cols)
+	left := marginX
+	for idx, col := range cols {
+		cnt := float64(slots[idx])
+		width := cnt*lay.boxW + max(cnt-1, 0)*gapX
+		clm := column{name: col.Name, left: left, width: width}
+		lay.cols = append(lay.cols, clm)
+		left += width + gapX
+	}
+	for pth, cel := range cells {
+		col := lay.cols[cel.col]
+		lay.lefts[pth] = col.left + float64(cel.pos)*(lay.boxW+gapX)
+	}
+
+	lay.width = left - gapX + marginX
 	rows := float64(lay.levels)
 	lay.height = 2*marginY + rows*boxHeight + max(rows-1, 0)*gapY
+	if lay.named() {
+		lay.height += boxHeight + gapY
+	}
 	return lay
 }
 
@@ -167,10 +229,11 @@ func (rnd *Renderer) head(buf *bytes.Buffer, lay layout, css string) {
 // levels writes the level separators and the level labels. Every level is
 // closed by a separator drawn below it, the lowest one closing the map.
 func (rnd *Renderer) levels(buf *bytes.Buffer, lay layout) {
-	x1, x2 := num(marginX/2), num(lay.width-marginX/2)
+	x1, x2 := marginX/2, lay.width-marginX/2
 	for lvl := range lay.levels {
 		top := lay.boxTop(lvl)
-		rnd.separator(buf, x1, x2, top+boxHeight+gapY/2)
+		y := top + boxHeight + gapY/2
+		rnd.line(buf, x1, y, x2, y)
 		_, _ = fmt.Fprintf(
 			buf,
 			tplLevel,
@@ -183,15 +246,41 @@ func (rnd *Renderer) levels(buf *bytes.Buffer, lay layout) {
 	}
 }
 
-// separator writes one level separator line.
-func (rnd *Renderer) separator(buf *bytes.Buffer, x1, x2 string, y float64) {
+// columns writes the map names above the named columns and the dividers
+// between them. A divider runs down the middle of the gap between two
+// columns, from the top of the name row to the separator closing the map.
+func (rnd *Renderer) columns(buf *bytes.Buffer, lay layout) {
+	if !lay.named() {
+		return
+	}
+	nameY := marginY + (boxHeight+rnd.fnt.CapHeight(levelSize))/2
+	bottom := lay.boxTop(0) + boxHeight + gapY/2
+	for idx, col := range lay.cols {
+		_, _ = fmt.Fprintf(
+			buf,
+			tplLabel,
+			num(col.left+col.width/2),
+			num(nameY),
+			colorLevelText,
+			num(levelSize),
+			html.EscapeString(col.name),
+		)
+		if idx > 0 {
+			x := col.left - gapX/2
+			rnd.line(buf, x, marginY, x, bottom)
+		}
+	}
+}
+
+// line writes one line styled as a level separator.
+func (rnd *Renderer) line(buf *bytes.Buffer, x1, y1, x2, y2 float64) {
 	_, _ = fmt.Fprintf(
 		buf,
 		tplSepar,
-		x1,
-		num(y),
-		x2,
-		num(y),
+		num(x1),
+		num(y1),
+		num(x2),
+		num(y2),
 		colorLevel,
 		num(strokeW),
 		dashes,
@@ -211,8 +300,8 @@ func (rnd *Renderer) modules(
 
 	for lvl, nodes := range grp.Levels {
 		top := lay.boxTop(lvl)
-		for col, nod := range nodes {
-			left := lay.boxLeft(col)
+		for _, nod := range nodes {
+			left := lay.lefts[nod.Path]
 			deps := strings.Join(nod.Dependents, " ")
 			names := append([]string{classModule}, cls[nod.Path]...)
 			_, _ = fmt.Fprintf(
@@ -273,6 +362,28 @@ func (rnd *Renderer) orders(
 			bad.rank,
 		)
 	}
+}
+
+// place returns the cell of every module keyed by module path, and the number
+// of boxes on the widest level of every column. A module goes to the first
+// column whose filter keeps it, or to the first column when none does, and
+// keeps the order the level sorts it in. The cols must not be empty.
+func place(grp *graph.Graph, cols []Column) (map[string]cell, []int) {
+	cells := make(map[string]cell, grp.Len())
+	slots := make([]int, len(cols))
+	for _, nodes := range grp.Levels {
+		used := make([]int, len(cols))
+		for _, nod := range nodes {
+			keep := func(col Column) bool { return col.Filter.Match(nod.Path) }
+			idx := max(slices.IndexFunc(cols, keep), 0)
+			cells[nod.Path] = cell{col: idx, pos: used[idx]}
+			used[idx]++
+		}
+		for idx, cnt := range used {
+			slots[idx] = max(slots[idx], cnt)
+		}
+	}
+	return cells, slots
 }
 
 // moduleIDs returns the element id of every module keyed by module path. The

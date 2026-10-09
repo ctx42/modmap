@@ -1,34 +1,50 @@
 # modmap configuration file — documented example.
 #
-# Copy this file next to your project, edit the maps, and generate them with
+# Copy this file next to your project, edit the maps, and draw them with
 #
-#   modmap -c modmap.yaml            # every map declared below
-#   modmap -c modmap.yaml ctx42      # only the map named ctx42
-#   modmap -c modmap.yaml ctx42 all  # two of them, in the order given
+#   modmap -c modmap.yaml             # every map declared below
+#   modmap -c modmap.yaml ctx42       # only the map named ctx42
+#   modmap -c modmap.yaml work ctx42  # two of them, in the order given
 #
-# Naming a map which is not declared here fails and lists the names that are.
+# A run always writes one image, to the "out" file below. Every map it draws
+# is a column of that image, left to right in the order the maps are named,
+# or in the order they are declared here when none are named. A run drawing
+# fewer maps overwrites the same file. Naming a map which is not declared
+# here fails and lists the names that are.
+#
+# The maps are not drawn apart: their directories are scanned together, a
+# module is kept when any of the maps keeps it, and the levels, the
+# highlighting, and the update order digits span the whole image. A module
+# of one map requiring a module of another is an edge like any other, and
+# every module is drawn once, in the first column whose map keeps it.
 #
 # When this file is used it is the only source of directories, filters, and
-# output paths: the --include, --exclude, and -o options cannot be combined
-# with -c. The one-off form takes them instead and declares nothing:
+# the output path: the --include, --exclude, and -o options cannot be
+# combined with -c. The one-off form takes them instead and declares nothing:
 #
 #   modmap --include 'github.com/you/*' -o tmp/map.svg ~/src
 #
-# The --web option is the exception, because it decides where a map goes
-# rather than what it holds. It opens one map in a browser instead of
-# writing it where you say, so exactly one map has to be named:
+# The --web option is the exception, because it decides where the image goes
+# rather than what it holds. It opens the same image a run would write in a
+# browser instead:
 #
-#   modmap --web -c modmap.yaml ctx42
+#   modmap --web -c modmap.yaml            # every map
+#   modmap --web -c modmap.yaml ctx42 work # the named maps
 #
-# The "out" key below is then ignored: the map goes to a page under the
+# The "out" key below is then ignored: the image goes to a page under the
 # system temporary directory, which the browser opens from disk and which
-# links the map beside it for saving it after all. There is no key for any
+# links the image beside it for saving it after all. There is no key for any
 # of this: it is a choice you make per run, not a property of a map.
 #
 # Every relative path below is resolved against the directory holding this
-# file, never against the current working directory, so a map generates the
-# same files whatever directory you run it from. Paths are otherwise used as
+# file, never against the current working directory, so a run writes the
+# same file whatever directory you run it from. Paths are otherwise used as
 # written: a leading "~" is not expanded, so spell the home directory out.
+
+# The SVG file the image is written to. Required, and an existing file is
+# overwritten. It is required even when you only ever use --web, which
+# ignores it. A map has no "out" key of its own.
+out: tmp/modules.svg
 
 maps:
     # A map of one workspace, filtered to the modules you own. This is the
@@ -59,22 +75,17 @@ maps:
     exclude:
       - github.com/ctx42/tst-*
 
-    # The SVG file this map is written to. Required, and an existing file
-    # is overwritten. It is required even for a map you only ever open
-    # with --web, which ignores it.
-    out: tmp/ctx42-modules.svg
-
     # A map spanning more than one checkout directory. Modules found on disk
     # are read from disk whatever version other modules ask for, so a map
-    # like this shows the code you are actually working on.
+    # like this shows the code you are actually working on. Drawn beside
+    # ctx42, it keeps only the customer modules, and the ctx42 modules they
+    # require are reached across the column divider.
   - name: work
     dirs:
-      - /home/you/src/ctx42
       - /home/you/src/customer/backend
+      - /home/you/src/customer/frontend
     include:
-      - github.com/ctx42/*
       - github.com/customer/*
-    out: tmp/work-modules.svg
 
     # A map with no filters: every module in the dependency closure, drawn.
     # Expect it to be slow on the first run, because the go.mod file of every
@@ -84,7 +95,8 @@ maps:
     # skips that question for unattended runs. A dependency cycle anywhere in
     # the closure is fatal and no file is written — real cycles do exist
     # among third-party modules, so an unfiltered map may simply refuse.
+    # Drawn with other maps it pulls the whole closure into the image, so
+    # name it alone: modmap -c modmap.yaml everything
   - name: everything
     dirs:
       - /home/you/src/ctx42
-    out: tmp/everything.svg

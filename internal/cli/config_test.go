@@ -193,7 +193,7 @@ func Test_config_parse(t *testing.T) {
 		assert.ErrorIs(t, errWebOut, err)
 	})
 
-	t.Run("error - web with no configured map named", func(t *testing.T) {
+	t.Run("web option names no configured map", func(t *testing.T) {
 		// --- Given ---
 		args := []string{"--web", "-c", "/etc/modmap.yaml"}
 		cfg := &config{}
@@ -202,10 +202,12 @@ func Test_config_parse(t *testing.T) {
 		err := cfg.parse(args)
 
 		// --- Then ---
-		assert.ErrorIs(t, errWebMap, err)
+		assert.NoError(t, err)
+		assert.True(t, cfg.web)
+		assert.Empty(t, cfg.names)
 	})
 
-	t.Run("error - web with several configured maps named", func(t *testing.T) {
+	t.Run("web option names several configured maps", func(t *testing.T) {
 		// --- Given ---
 		args := []string{"--web", "-c", "/etc/modmap.yaml", "one", "two"}
 		cfg := &config{}
@@ -214,7 +216,9 @@ func Test_config_parse(t *testing.T) {
 		err := cfg.parse(args)
 
 		// --- Then ---
-		assert.ErrorIs(t, errWebMap, err)
+		assert.NoError(t, err)
+		assert.True(t, cfg.web)
+		assert.Equal(t, []string{"one", "two"}, cfg.names)
 	})
 
 	t.Run("error - no directory", func(t *testing.T) {
@@ -328,6 +332,30 @@ func Test_config_parseConf(t *testing.T) {
 		assert.Equal(t, "/m.yaml", cfg.conf)
 		assert.Equal(t, []string{"a"}, cfg.names)
 	})
+
+	t.Run("web with several maps", func(t *testing.T) {
+		// --- Given ---
+		cfg := parsedConfig(t, "--web", "-c", "/m.yaml", "a", "b")
+
+		// --- When ---
+		err := cfg.parseConf("/wd")
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"a", "b"}, cfg.names)
+	})
+
+	t.Run("web without map", func(t *testing.T) {
+		// --- Given ---
+		cfg := parsedConfig(t, "--web", "-c", "/m.yaml")
+
+		// --- When ---
+		err := cfg.parseConf("/wd")
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Empty(t, cfg.names)
+	})
 }
 
 func Test_config_parseConf_tabular(t *testing.T) {
@@ -351,11 +379,6 @@ func Test_config_parseConf_tabular(t *testing.T) {
 			"error - with exclude",
 			[]string{"-c", "m.yaml", "-e", "x/*"},
 			errConfOnly,
-		},
-		{
-			"error - web without map",
-			[]string{"--web", "-c", "m.yaml"},
-			errWebMap,
 		},
 	}
 
@@ -441,6 +464,7 @@ func Test_config_help(t *testing.T) {
 	// --- Then ---
 	assert.Contain(t, "modmap [options] -o <file.svg> <dir>", have)
 	assert.Contain(t, "modmap -c <config.yaml> [map...]", have)
+	assert.Contain(t, "modmap --web -c <config.yaml> [map...]", have)
 	assert.Contain(t, "-i, --include", have)
 	assert.Contain(t, "-o, --out", have)
 }

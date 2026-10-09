@@ -4,11 +4,11 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"testing"
 
@@ -18,6 +18,7 @@ import (
 	"github.com/ctx42/testing/pkg/must"
 	"github.com/ctx42/testkit/pkg/oskit"
 
+	"github.com/ctx42/modmap/internal/conf"
 	"github.com/ctx42/modmap/internal/view"
 	"github.com/ctx42/modmap/pkg/graph"
 	"github.com/ctx42/modmap/pkg/mod"
@@ -34,7 +35,7 @@ func Test_run(t *testing.T) {
 		rng := tst.Ring()
 
 		// --- When ---
-		err := run(context.Background(), rng, cfg)
+		err := run(t.Context(), rng, cfg)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -42,74 +43,264 @@ func Test_run(t *testing.T) {
 		assert.Contain(t, "found example.com/a", tst.Stderr())
 	})
 
-	t.Run("every configured map is generated", func(t *testing.T) {
+	t.Run("the options filter the map", func(t *testing.T) {
 		// --- Given ---
 		src := t.TempDir()
 		writeMod(t, "module example.com/a\n", src, "a")
-		dst := t.TempDir()
-		conf := oskit.Create(t, ""+
-			"maps:\n"+
-			"  - name: one\n"+
-			"    dirs: ["+src+"]\n"+
-			"    out: one.svg\n"+
-			"  - name: two\n"+
-			"    dirs: ["+src+"]\n"+
-			"    out: two.svg\n", dst, "modmap.yaml")
-		cfg := &config{conf: conf}
+		writeMod(t, "module example.com/b\n", src, "b")
+		out := filepath.Join(t.TempDir(), "map.svg")
+		cfg := &config{
+			roots:   []string{src},
+			include: []string{"example.com/*"},
+			exclude: []string{"example.com/b"},
+			out:     out,
+		}
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 
 		// --- When ---
-		err := run(context.Background(), rng, cfg)
+		err := run(t.Context(), rng, cfg)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.True(t, oskit.PathExists(t, dst, "one.svg"))
-		assert.True(t, oskit.PathExists(t, dst, "two.svg"))
-		assert.Contain(t, "found example.com/a", tst.Stderr())
+		doc := oskit.ReadFileStr(t, out)
+		assert.Contain(t, `data-module="example.com/a"`, doc)
+		assert.NotContain(t, `data-module="example.com/b"`, doc)
+		assert.Contain(t, "graph has 1 modules", tst.Stderr())
 	})
 
-	t.Run("only the named map is generated", func(t *testing.T) {
+	t.Run("every configured map in one image", func(t *testing.T) {
 		// --- Given ---
-		src := t.TempDir()
-		writeMod(t, "module example.com/a\n", src, "a")
-		dst := t.TempDir()
-		conf := oskit.Create(t, ""+
-			"maps:\n"+
-			"  - name: one\n"+
-			"    dirs: ["+src+"]\n"+
-			"    out: one.svg\n"+
-			"  - name: two\n"+
-			"    dirs: ["+src+"]\n"+
-			"    out: two.svg\n", dst, "modmap.yaml")
-		cfg := &config{conf: conf, names: []string{"two"}}
+		cnf := crossMaps(t)
+		cfg := &config{conf: cnf}
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 
 		// --- When ---
-		err := run(context.Background(), rng, cfg)
+		err := run(t.Context(), rng, cfg)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.False(t, oskit.PathExists(t, dst, "one.svg"))
-		assert.True(t, oskit.PathExists(t, dst, "two.svg"))
-		assert.Contain(t, "found example.com/a", tst.Stderr())
+		dst := filepath.Dir(cnf)
+		ents := must.Value(os.ReadDir(dst))
+		assert.Len(t, 2, ents)
+		doc := oskit.ReadFileStr(t, dst, "all.svg")
+		assert.Contain(t, `data-module="github.com/ctx42/testing"`, doc)
+		assert.Contain(t, `data-module="github.com/customer/a"`, doc)
+		assert.Contain(t, ">ctx42</text>", doc)
+		assert.Contain(t, ">work</text>", doc)
+
+		assert.Contain(t, "graph has 2 modules", tst.Stderr())
+	})
+
+	t.Run("only the named map is drawn", func(t *testing.T) {
+		// --- Given ---
+		cnf := crossMaps(t)
+		cfg := &config{conf: cnf, names: []string{"ctx42"}}
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+
+		// --- When ---
+		err := run(t.Context(), rng, cfg)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		doc := oskit.ReadFileStr(t, filepath.Dir(cnf), "all.svg")
+		assert.Contain(t, `data-module="github.com/ctx42/testing"`, doc)
+		assert.NotContain(t, "github.com/customer/a", doc)
+		assert.NotContain(t, ">ctx42</text>", doc)
+
+		assert.NotContain(t, "found github.com/customer/a", tst.Stderr())
+	})
+
+	t.Run("a requirement crossing maps is an edge", func(t *testing.T) {
+		// --- Given ---
+		cnf := crossMaps(t)
+		cfg := &config{conf: cnf, names: []string{"ctx42", "work"}}
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+
+		// --- When ---
+		err := run(t.Context(), rng, cfg)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		doc := oskit.ReadFileStr(t, filepath.Dir(cnf), "all.svg")
+		wTst := `<g id="m0" class="module rm1" tabindex="0"` +
+			` data-module="github.com/ctx42/testing" data-level="0"` +
+			` data-dependents="github.com/customer/a">`
+		assert.Contain(t, wTst, doc)
+		wApp := `<g id="m1" class="module rm0" tabindex="0"` +
+			` data-module="github.com/customer/a" data-level="1"`
+		assert.Contain(t, wApp, doc)
+		assert.Equal(t, 1, strings.Count(doc, `data-level="0"`))
+
+		lib := group(doc, "github.com/ctx42/testing")
+		assert.Contain(t, `<rect x="216" `, lib)
+		app := group(doc, "github.com/customer/a")
+		assert.NotContain(t, `<rect x="216" `, app)
+		assert.Contain(t, `class="badge bm0"`, app)
+
+		assert.Contain(t, "graph has 2 modules, widest level 1", tst.Stderr())
+	})
+
+	t.Run("columns follow the named order", func(t *testing.T) {
+		// --- Given ---
+		cnf := crossMaps(t)
+		cfg := &config{conf: cnf, names: []string{"work", "ctx42"}}
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+
+		// --- When ---
+		err := run(t.Context(), rng, cfg)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		doc := oskit.ReadFileStr(t, filepath.Dir(cnf), "all.svg")
+		lib := group(doc, "github.com/ctx42/testing")
+		assert.NotContain(t, `<rect x="216" `, lib)
+		app := group(doc, "github.com/customer/a")
+		assert.Contain(t, `<rect x="216" `, app)
+		work := strings.Index(doc, ">work</text>")
+		assert.True(t, work < strings.Index(doc, ">ctx42</text>"))
+
+		assert.Contain(t, "graph has 2 modules", tst.Stderr())
+	})
+
+	t.Run("a wide row across maps is confirmed", func(t *testing.T) {
+		// --- Given ---
+		cnf := wideMaps(t)
+
+		ctl, trm := openPTY(t)
+		must.Value(ctl.WriteString("n\n"))
+
+		cfg := &config{conf: cnf}
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+		rng.SetStdin(trm)
+
+		// --- When ---
+		err := run(t.Context(), rng, cfg)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.False(t, oskit.PathExists(t, filepath.Dir(cnf), "all.svg"))
+		want := "the widest level holds 24 modules"
+		assert.Contain(t, want, tst.Stderr())
+		assert.Contain(t, "render it anyway? [y/N]: ", tst.Stderr())
+	})
+
+	t.Run("a wide row across maps with yes", func(t *testing.T) {
+		// --- Given ---
+		cnf := wideMaps(t)
+		_, trm := openPTY(t)
+		cfg := &config{conf: cnf, yes: true}
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+		rng.SetStdin(trm)
+
+		// --- When ---
+		err := run(t.Context(), rng, cfg)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.True(t, oskit.PathExists(t, filepath.Dir(cnf), "all.svg"))
+		assert.NotContain(t, "render it anyway?", tst.Stderr())
+	})
+
+	t.Run("web opens every configured map", func(t *testing.T) {
+		// --- Given ---
+		tmp := t.TempDir()
+		cnf := crossMaps(t)
+		// os.TempDir reads the process environment, which no ring reaches.
+		t.Setenv("TMPDIR", tmp)
+		var opened string
+		cfg := &config{
+			conf:   cnf,
+			web:    true,
+			opener: func(url string) error { opened = url; return nil },
+		}
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+
+		// --- When ---
+		err := run(t.Context(), rng, cfg)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		pth := filepath.Join(tmp, "modmap", "ctx42-work.html")
+		assert.Equal(t, "file://"+pth, opened)
+		page := oskit.ReadFileStr(t, pth)
+		assert.Contain(t, `data-module="github.com/ctx42/testing"`, page)
+		assert.Contain(t, `data-module="github.com/customer/a"`, page)
+		assert.False(t, oskit.PathExists(t, filepath.Dir(cnf), "all.svg"))
+
+		assert.Contain(t, "map written to "+pth, tst.Stderr())
+	})
+
+	t.Run("web opens the named maps", func(t *testing.T) {
+		// --- Given ---
+		tmp := t.TempDir()
+		cnf := crossMaps(t)
+		t.Setenv("TMPDIR", tmp)
+		cfg := &config{
+			conf:   cnf,
+			names:  []string{"work", "ctx42"},
+			web:    true,
+			opener: func(string) error { return nil },
+		}
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+
+		// --- When ---
+		err := run(t.Context(), rng, cfg)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		pth := filepath.Join(tmp, "modmap", "work-ctx42.html")
+		page := oskit.ReadFileStr(t, pth)
+		assert.Contain(t, ">work</text>", page)
+		assert.Contain(t, ">ctx42</text>", page)
+		assert.False(t, oskit.PathExists(t, filepath.Dir(cnf), "all.svg"))
+
+		assert.Contain(t, "map written to "+pth, tst.Stderr())
+	})
+
+	t.Run("web opens one named map", func(t *testing.T) {
+		// --- Given ---
+		tmp := t.TempDir()
+		cnf := crossMaps(t)
+		t.Setenv("TMPDIR", tmp)
+		cfg := &config{
+			conf:   cnf,
+			names:  []string{"ctx42"},
+			web:    true,
+			opener: func(string) error { return nil },
+		}
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+
+		// --- When ---
+		err := run(t.Context(), rng, cfg)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		page := oskit.ReadFileStr(t, tmp, "modmap", "ctx42.html")
+		assert.Contain(t, `data-module="github.com/ctx42/testing"`, page)
+		assert.NotContain(t, ">ctx42</text>", page)
+		assert.NotContain(t, `y1="200"`, page)
+		assert.False(t, oskit.PathExists(t, filepath.Dir(cnf), "all.svg"))
+
+		assert.Contain(t, "graph has 1 modules", tst.Stderr())
 	})
 
 	t.Run("error - unknown map name", func(t *testing.T) {
 		// --- Given ---
-		src := t.TempDir()
-		dst := t.TempDir()
-		conf := oskit.Create(t, ""+
-			"maps:\n"+
-			"  - name: one\n"+
-			"    dirs: ["+src+"]\n"+
-			"    out: one.svg\n", dst, "modmap.yaml")
-		cfg := &config{conf: conf, names: []string{"three"}}
+		cfg := &config{conf: crossMaps(t), names: []string{"three"}}
 		rng := ringtest.New(t).Ring()
 
 		// --- When ---
-		err := run(context.Background(), rng, cfg)
+		err := run(t.Context(), rng, cfg)
 
 		// --- Then ---
 		assert.ErrorContain(t, "unknown map: three", err)
@@ -121,31 +312,84 @@ func Test_run(t *testing.T) {
 		rng := ringtest.New(t).Ring()
 
 		// --- When ---
-		err := run(context.Background(), rng, cfg)
+		err := run(t.Context(), rng, cfg)
 
 		// --- Then ---
 		assert.ErrorContain(t, "read configuration", err)
 	})
 
-	t.Run("error - a map fails to generate", func(t *testing.T) {
+	t.Run("error - a map directory cannot be scanned", func(t *testing.T) {
 		// --- Given ---
-		dst := t.TempDir()
 		gone := filepath.Join(t.TempDir(), "gone")
-		conf := oskit.Create(t, ""+
+		cnf := oskit.Create(t, ""+
+			"out: all.svg\n"+
 			"maps:\n"+
 			"  - name: one\n"+
-			"    dirs: ["+gone+"]\n"+
-			"    out: one.svg\n", dst, "modmap.yaml")
-		cfg := &config{conf: conf}
+			"    dirs: ["+gone+"]\n", t.TempDir(), "modmap.yaml")
+		cfg := &config{conf: cnf}
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 
 		// --- When ---
-		err := run(context.Background(), rng, cfg)
+		err := run(t.Context(), rng, cfg)
 
 		// --- Then ---
-		assert.ErrorContain(t, "map one: scan "+gone, err)
+		assert.ErrorContain(t, "scan "+gone, err)
 		assert.Contain(t, "scanning "+gone, tst.Stderr())
+	})
+}
+
+func Test_combine(t *testing.T) {
+	t.Run("maps side by side", func(t *testing.T) {
+		// --- Given ---
+		maps := []conf.Map{
+			{
+				Name:    "ctx42",
+				Dirs:    []string{"/src/ctx42", "/src/shared"},
+				Include: []string{"github.com/ctx42/*"},
+			},
+			{
+				Name:    "work",
+				Dirs:    []string{"/src/work", "/src/shared"},
+				Include: []string{"github.com/customer/*"},
+				Exclude: []string{"github.com/customer/x"},
+			},
+		}
+
+		// --- When ---
+		have := combine("/out/all.svg", maps)
+
+		// --- Then ---
+		assert.Equal(t, "ctx42-work", have.Name)
+		wDirs := []string{"/src/ctx42", "/src/shared", "/src/work"}
+		assert.Equal(t, wDirs, have.Dirs)
+		assert.Equal(t, "/out/all.svg", have.Out)
+
+		assert.True(t, have.Filter.Match("github.com/ctx42/a"))
+		assert.True(t, have.Filter.Match("github.com/customer/a"))
+		assert.False(t, have.Filter.Match("github.com/customer/x"))
+		assert.False(t, have.Filter.Match("golang.org/x/mod"))
+
+		assert.Len(t, 2, have.Columns)
+		assert.Equal(t, "ctx42", have.Columns[0].Name)
+		assert.True(t, have.Columns[0].Filter.Match("github.com/ctx42/a"))
+		assert.False(t, have.Columns[0].Filter.Match("github.com/customer/a"))
+		assert.Equal(t, "work", have.Columns[1].Name)
+		assert.True(t, have.Columns[1].Filter.Match("github.com/customer/a"))
+	})
+
+	t.Run("one map", func(t *testing.T) {
+		// --- Given ---
+		maps := []conf.Map{{Name: "ctx42", Dirs: []string{"/src"}}}
+
+		// --- When ---
+		have := combine("/out/all.svg", maps)
+
+		// --- Then ---
+		assert.Equal(t, "ctx42", have.Name)
+		assert.Equal(t, []string{"/src"}, have.Dirs)
+		assert.Len(t, 1, have.Columns)
+		assert.True(t, have.Filter.Match("golang.org/x/mod"))
 	})
 }
 
@@ -185,9 +429,9 @@ func Test_generate(t *testing.T) {
 		writeMod(t, "module other.com/b\n", src, "b")
 		out := filepath.Join(t.TempDir(), "map.svg")
 		spc := spec{
-			Dirs:    []string{src},
-			Include: []string{"example.com/*"},
-			Out:     out,
+			Dirs:   []string{src},
+			Filter: mod.NewFilter([]string{"example.com/*"}, nil),
+			Out:    out,
 		}
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
@@ -456,7 +700,7 @@ func Test_write(t *testing.T) {
 		out := filepath.Join(t.TempDir(), "map.svg")
 
 		// --- When ---
-		err := write(grp, out)
+		err := write(grp, nil, out)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -470,7 +714,7 @@ func Test_write(t *testing.T) {
 		out := filepath.Join(t.TempDir(), "gone", "map.svg")
 
 		// --- When ---
-		err := write(grp, out)
+		err := write(grp, nil, out)
 
 		// --- Then ---
 		assert.ErrorIs(t, fs.ErrNotExist, err)

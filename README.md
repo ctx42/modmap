@@ -41,6 +41,8 @@ install to look at it.
   `data-*` attributes; it carries no script at all.
 - `--web` opens the map in a browser, pan and zoom included, with no
   server to stop and no file to name.
+- Several maps drawn side by side in one image, one column each, with
+  requirements crossing the columns lit and numbered like any other.
 
 ## Prerequisites
 
@@ -138,24 +140,37 @@ Because the destination is not yours to pick, `--web` and `-o` cannot be
 combined; the page links the SVG written beside it when you want to keep
 the map after all.
 
-With a configuration file, `--web` opens one named map:
-`modmap --web -c modmap.yaml ctx42`. Naming none, or naming several, is
-an error — only one map can be opened at a time.
+With a configuration file, `--web` opens the same image a run would
+write — every declared map, or only the named ones — and ignores the
+file's `out` key: `modmap --web -c modmap.yaml ctx42 work`.
 
 ### Several maps at once
 
-A configuration file names the maps a project keeps, so they are
-regenerated with one command:
+A configuration file names the maps a project keeps and draws them side
+by side into the one image its `out` key names:
 
 ```shell
 modmap -c modmap.yaml
 ```
 
-Naming maps generates only those: `modmap -c modmap.yaml ctx42 work`.
-When a configuration file is used it is the only source of directories
-and filters, so `--include`, `--exclude`, and `-o` cannot be combined
-with `-c`. See [modmap.example.yaml](modmap.example.yaml), which
-documents every key.
+Every map is a column, under its name and split from the next by a
+dashed divider, left to right in the order the file declares them.
+Naming maps draws only those, in the order named:
+`modmap -c modmap.yaml work ctx42`. Naming one draws a single column;
+every run overwrites the same file.
+
+The columns are one map, not several pictures: the directories of every
+map are scanned together, a module is kept when any map keeps it, and a
+module of one map requiring a module of another is an edge. The levels
+are shared, so a module sits one level above whatever it requires,
+whichever column that is in, and hovering, pinning, and the update
+order digits run across the dividers. A module is drawn once, in the
+first column whose map keeps it.
+
+When a configuration file is used it is the only source of directories,
+filters, and the output path, so `--include`, `--exclude`, and `-o`
+cannot be combined with `-c`. See
+[modmap.example.yaml](modmap.example.yaml), which documents every key.
 
 ## Configuration
 
@@ -171,15 +186,17 @@ Command line options:
 | `-y, --yes`     | do not ask before rendering a very wide level    |
 | `-h, --help`    | show usage                                       |
 
-Configuration file keys, one entry per map under `maps`:
+Configuration file keys: `out` at the top level, then one entry per
+map under `maps`:
 
 | Key       | Meaning                                              |
 |-----------|------------------------------------------------------|
+| `out`     | SVG file the image is written to; required           |
+| `maps`    | the maps to draw; at least one                       |
 | `name`    | how the map is asked for; required and unique        |
 | `dirs`    | directories to scan; at least one                    |
 | `include` | globs deciding what is drawn; all modules when empty |
 | `exclude` | globs removing modules; optional                     |
-| `out`     | SVG file this map is written to; required            |
 
 Relative paths in a configuration file resolve against the directory
 holding the file, never against the working directory.

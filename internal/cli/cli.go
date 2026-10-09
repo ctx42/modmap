@@ -3,8 +3,8 @@
 
 // Package cli implements the modmap command line interface: option parsing,
 // run configuration, and the top level dispatch returning the exit code. A
-// run either writes every map it is asked for or opens a single one in a
-// browser.
+// run draws one image, holding every map it is asked for side by side, and
+// either writes it or opens it in a browser.
 package cli
 
 import "errors"
@@ -30,8 +30,4 @@ var (
 	// errWebOut is returned when the map is opened in a browser and
 	// written to a file at once.
 	errWebOut = errors.New("--web cannot be used with -o")
-
-	// errWebMap is returned when the map to open in a browser is not
-	// named exactly once.
-	errWebMap = errors.New("--web with -c needs exactly one map name")
 )

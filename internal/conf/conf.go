@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 // Package conf reads the modmap configuration file describing the maps to
-// generate.
+// draw and the image they are drawn into.
 package conf
 
 import (
@@ -35,11 +35,8 @@ var (
 	// ErrEmptyDir is returned for a map listing an empty directory.
 	ErrEmptyDir = errors.New("map with an empty directory")
 
-	// ErrNoOut is returned for a map without an output file.
-	ErrNoOut = errors.New("map without an output file")
-
-	// ErrDupOut is returned when two maps write the same output file.
-	ErrDupOut = errors.New("duplicate map output file")
+	// ErrNoOut is returned for a configuration without an output file.
+	ErrNoOut = errors.New("no output file")
 
 	// ErrUnkMap is returned when a requested map is not declared.
 	ErrUnkMap = errors.New("unknown map")
@@ -60,20 +57,20 @@ type Map struct {
 	// Exclude holds the module path globs removing modules from the map. A
 	// module matching both lists is not rendered.
 	Exclude []string `yaml:"exclude"`
-
-	// Out is the SVG file the map is written to.
-	Out string `yaml:"out"`
 }
 
 // Config represents the modmap configuration file.
 type Config struct {
+	// Out is the SVG file the selected maps are drawn into, side by side.
+	Out string `yaml:"out"`
+
 	// Maps holds the maps the file declares.
 	Maps []Map `yaml:"maps"`
 }
 
 // Load reads the configuration file at pth. The relative directory and output
 // paths it holds are resolved against the directory of the file itself. A key
-// the configuration does not define is an error.
+// the configuration does not define is an error, so is an "out" key on a map.
 func Load(pth string) (*Config, error) {
 	data, err := os.ReadFile(pth) //nolint:gosec
 	if err != nil {
@@ -130,8 +127,10 @@ func (cfg *Config) validate() error {
 	if len(cfg.Maps) == 0 {
 		return ErrNoMaps
 	}
+	if cfg.Out == "" {
+		return ErrNoOut
+	}
 	names := make(map[string]bool, len(cfg.Maps))
-	outs := make(map[string]string, len(cfg.Maps))
 	for idx, mp := range cfg.Maps {
 		switch {
 		case mp.Name == "":
@@ -145,16 +144,8 @@ func (cfg *Config) validate() error {
 
 		case slices.Contains(mp.Dirs, ""):
 			return fmt.Errorf("%w: %s", ErrEmptyDir, mp.Name)
-
-		case mp.Out == "":
-			return fmt.Errorf("%w: %s", ErrNoOut, mp.Name)
-
-		case outs[mp.Out] != "":
-			format := "%w: %s and %s write %s"
-			return fmt.Errorf(format, ErrDupOut, outs[mp.Out], mp.Name, mp.Out)
 		}
 		names[mp.Name] = true
-		outs[mp.Out] = mp.Name
 
 		for _, glob := range slices.Concat(mp.Include, mp.Exclude) {
 			if err := mod.ValidateGlob(glob); err != nil {
@@ -168,11 +159,11 @@ func (cfg *Config) validate() error {
 // resolve makes every relative path in the configuration absolute by
 // resolving it against dir. Empty paths stay empty.
 func (cfg *Config) resolve(dir string) {
-	for idx, mp := range cfg.Maps {
-		for jdx, pth := range mp.Dirs {
-			cfg.Maps[idx].Dirs[jdx] = absPath(dir, pth)
+	cfg.Out = absPath(dir, cfg.Out)
+	for _, mp := range cfg.Maps {
+		for idx, pth := range mp.Dirs {
+			mp.Dirs[idx] = absPath(dir, pth)
 		}
-		cfg.Maps[idx].Out = absPath(dir, mp.Out)
 	}
 }
 

@@ -12,6 +12,8 @@ import (
 	"github.com/ctx42/goldkit/pkg/goldkit"
 	"github.com/ctx42/testing/pkg/assert"
 	"github.com/ctx42/testing/pkg/must"
+
+	"github.com/ctx42/modmap/pkg/mod"
 )
 
 func Test_layout_boxTop(t *testing.T) {
@@ -26,16 +28,28 @@ func Test_layout_boxTop(t *testing.T) {
 	assert.Equal(t, have-(boxHeight+gapY), lay.boxTop(1))
 }
 
-func Test_layout_boxLeft(t *testing.T) {
-	// --- Given ---
-	lay := layout{boxW: 500}
+func Test_layout_named(t *testing.T) {
+	t.Run("one column", func(t *testing.T) {
+		// --- Given ---
+		lay := layout{cols: []column{{}}}
 
-	// --- When ---
-	have := lay.boxLeft(0)
+		// --- When ---
+		have := lay.named()
 
-	// --- Then ---
-	assert.Equal(t, marginX, have)
-	assert.Equal(t, marginX+500+gapX, lay.boxLeft(1))
+		// --- Then ---
+		assert.False(t, have)
+	})
+
+	t.Run("two columns", func(t *testing.T) {
+		// --- Given ---
+		lay := layout{cols: []column{{}, {}}}
+
+		// --- When ---
+		have := lay.named()
+
+		// --- Then ---
+		assert.True(t, have)
+	})
 }
 
 func Test_NewRenderer(t *testing.T) {
@@ -60,7 +74,7 @@ func Test_Renderer_Render(t *testing.T) {
 		buf := &bytes.Buffer{}
 
 		// --- When ---
-		err := rnd.Render(grp, buf)
+		err := rnd.Render(grp, nil, buf)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -75,7 +89,7 @@ func Test_Renderer_Render(t *testing.T) {
 		buf := &bytes.Buffer{}
 
 		// --- When ---
-		err := rnd.Render(grp, buf)
+		err := rnd.Render(grp, nil, buf)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -89,7 +103,7 @@ func Test_Renderer_Render(t *testing.T) {
 		buf := &bytes.Buffer{}
 
 		// --- When ---
-		err := rnd.Render(newGraph(nil), buf)
+		err := rnd.Render(newGraph(nil), nil, buf)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -105,7 +119,7 @@ func Test_Renderer_Render(t *testing.T) {
 		buf := &bytes.Buffer{}
 
 		// --- When ---
-		err := rnd.Render(grp, buf)
+		err := rnd.Render(grp, nil, buf)
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -125,12 +139,89 @@ func Test_Renderer_Render(t *testing.T) {
 		buf := &bytes.Buffer{}
 
 		// --- When ---
-		err := rnd.Render(grp, buf)
+		err := rnd.Render(grp, nil, buf)
 
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.NotContain(t, `a&"b`, buf.String())
 		assert.Contain(t, `a&amp;&#34;b`, buf.String())
+	})
+
+	t.Run("one named column draws as no columns", func(t *testing.T) {
+		// --- Given ---
+		grp := newGraph(map[string][]string{
+			"example.com/app": {"example.com/lib"},
+			"example.com/lib": nil,
+		})
+		cols := []Column{{Name: "ctx42"}}
+		rnd := must.Value(NewRenderer())
+		buf := &bytes.Buffer{}
+
+		// --- When ---
+		err := rnd.Render(grp, cols, buf)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := &bytes.Buffer{}
+		must.Nil(rnd.Render(grp, nil, want))
+		assert.Equal(t, want.String(), buf.String())
+		assert.NotContain(t, ">ctx42</text>", buf.String())
+	})
+
+	t.Run("two maps side by side", func(t *testing.T) {
+		// --- Given ---
+		grp := newGraph(map[string][]string{
+			"github.com/ctx42/testing": nil,
+			"github.com/ctx42/ring":    nil,
+			"github.com/customer/a":    {"github.com/ctx42/testing"},
+		})
+		cols := []Column{
+			{
+				Name:   "ctx42",
+				Filter: mod.NewFilter([]string{"github.com/ctx42/*"}, nil),
+			},
+			{
+				Name:   "work",
+				Filter: mod.NewFilter([]string{"github.com/*/*"}, nil),
+			},
+		}
+		rnd := must.Value(NewRenderer())
+		buf := &bytes.Buffer{}
+
+		// --- When ---
+		err := rnd.Render(grp, cols, buf)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		have := buf.String()
+		for _, pth := range []string{
+			"github.com/ctx42/ring",
+			"github.com/ctx42/testing",
+			"github.com/customer/a",
+		} {
+			want := `data-module="` + pth + `"`
+			assert.Equal(t, 1, strings.Count(have, want))
+		}
+		wApp := `<g id="m2" class="module rm1" tabindex="0"` +
+			` data-module="github.com/customer/a" data-level="1"`
+		assert.Contain(t, wApp, have)
+		_, app, _ := strings.Cut(have, wApp)
+		app, _, _ = strings.Cut(app, "</g>")
+		assert.Contain(t, `class="badge bm1" fill`, app)
+		wTst := `<g id="m1" class="module rm2" tabindex="0"` +
+			` data-module="github.com/ctx42/testing" data-level="0"` +
+			` data-dependents="github.com/customer/a">`
+		assert.Contain(t, wTst, have)
+
+		assert.Equal(t, 1, strings.Count(have, ">ctx42</text>"))
+		assert.Equal(t, 1, strings.Count(have, ">work</text>"))
+
+		lay := rnd.layout(grp, cols)
+		x := num(lay.cols[1].left - gapX/2)
+		wDiv := `<line x1="` + x + `" y1="200" x2="` + x + `" `
+		assert.Contain(t, wDiv, have)
+		wWidth := ` width="` + num(lay.boxW) + `" height="231"`
+		assert.Equal(t, 3, strings.Count(have, wWidth))
 	})
 
 	t.Run("error - writer fails", func(t *testing.T) {
@@ -139,7 +230,7 @@ func Test_Renderer_Render(t *testing.T) {
 		dst := &failWriter{}
 
 		// --- When ---
-		err := rnd.Render(newGraph(nil), dst)
+		err := rnd.Render(newGraph(nil), nil, dst)
 
 		// --- Then ---
 		assert.ErrorIs(t, errWrite, err)
@@ -157,7 +248,7 @@ func Test_Renderer_layout(t *testing.T) {
 		rnd := must.Value(NewRenderer())
 
 		// --- When ---
-		have := rnd.layout(grp)
+		have := rnd.layout(grp, nil)
 
 		// --- Then ---
 		widest := rnd.fnt.Width("example.com/very/long/path", textSize)
@@ -176,11 +267,84 @@ func Test_Renderer_layout(t *testing.T) {
 		rnd := must.Value(NewRenderer())
 
 		// --- When ---
-		have := rnd.layout(grp)
+		have := rnd.layout(grp, nil)
 
 		// --- Then ---
 		assert.Equal(t, 2, have.levels)
 		assert.Equal(t, 2*marginY+2*boxHeight+gapY, have.height)
+	})
+
+	t.Run("one column holds every module", func(t *testing.T) {
+		// --- Given ---
+		grp := newGraph(map[string][]string{"a": nil, "b": nil})
+		rnd := must.Value(NewRenderer())
+
+		// --- When ---
+		have := rnd.layout(grp, nil)
+
+		// --- Then ---
+		width := 2*have.boxW + gapX
+		assert.Equal(t, []column{{left: marginX, width: width}}, have.cols)
+		wLefts := map[string]float64{
+			"a": marginX,
+			"b": marginX + have.boxW + gapX,
+		}
+		assert.Equal(t, wLefts, have.lefts)
+	})
+
+	t.Run("columns are as wide as their widest level", func(t *testing.T) {
+		// --- Given ---
+		grp := newGraph(map[string][]string{
+			"one/a": nil,
+			"two/a": nil,
+			"two/b": nil,
+			"two/c": {"one/a"},
+		})
+		cols := []Column{
+			{Name: "one", Filter: mod.NewFilter([]string{"one/*"}, nil)},
+			{Name: "two", Filter: mod.NewFilter([]string{"two/*"}, nil)},
+		}
+		rnd := must.Value(NewRenderer())
+
+		// --- When ---
+		have := rnd.layout(grp, cols)
+
+		// --- Then ---
+		step := have.boxW + gapX
+		wTwo := marginX + have.boxW + gapX
+		want := []column{
+			{name: "one", left: marginX, width: have.boxW},
+			{name: "two", left: wTwo, width: 2*have.boxW + gapX},
+		}
+		assert.Equal(t, want, have.cols)
+		wLefts := map[string]float64{
+			"one/a": marginX,
+			"two/a": wTwo,
+			"two/b": wTwo + step,
+			"two/c": wTwo,
+		}
+		assert.Equal(t, wLefts, have.lefts)
+		assert.Equal(t, 2*marginX+3*have.boxW+2*gapX, have.width)
+		wHeight := 2*marginY + 3*boxHeight + 2*gapY
+		assert.Equal(t, wHeight, have.height)
+	})
+
+	t.Run("an empty column has no width", func(t *testing.T) {
+		// --- Given ---
+		grp := newGraph(map[string][]string{"a": nil})
+		cols := []Column{
+			{Name: "one"},
+			{Name: "two", Filter: mod.NewFilter([]string{"b"}, nil)},
+		}
+		rnd := must.Value(NewRenderer())
+
+		// --- When ---
+		have := rnd.layout(grp, cols)
+
+		// --- Then ---
+		wTwo := column{name: "two", left: marginX + have.boxW + gapX}
+		assert.Equal(t, wTwo, have.cols[1])
+		assert.Equal(t, 2*marginX+have.boxW+gapX, have.width)
 	})
 }
 
@@ -215,17 +379,66 @@ func Test_Renderer_levels(t *testing.T) {
 	assert.Contain(t, ">LEVEL 1</text>", have)
 }
 
-func Test_Renderer_separator(t *testing.T) {
+func Test_Renderer_columns(t *testing.T) {
+	t.Run("names and dividers", func(t *testing.T) {
+		// --- Given ---
+		rnd := must.Value(NewRenderer())
+		buf := &bytes.Buffer{}
+		lay := layout{
+			height: 2000,
+			cols: []column{
+				{name: "one", left: 100, width: 200},
+				{name: "a&b", left: 560, width: 400},
+				{name: "three", left: 1220, width: 0},
+			},
+		}
+
+		// --- When ---
+		rnd.columns(buf, lay)
+
+		// --- Then ---
+		have := buf.String()
+		nameY := num(marginY + (boxHeight+rnd.fnt.CapHeight(levelSize))/2)
+		wOne := `<text x="200" y="` + nameY + `" fill="` + colorLevelText +
+			`" font-size="96" text-anchor="middle">one</text>`
+		assert.Contain(t, wOne, have)
+		assert.Contain(t, `<text x="760" `, have)
+		assert.Contain(t, `>a&amp;b</text>`, have)
+		assert.Contain(t, `<text x="1220" `, have)
+
+		bottom := num(lay.boxTop(0) + boxHeight + gapY/2)
+		wDiv := `<line x1="430" y1="200" x2="430" y2="` + bottom + `"`
+		assert.Contain(t, wDiv, have)
+		assert.Contain(t, `<line x1="1090" y1="200" x2="1090" `, have)
+		assert.Equal(t, 2, strings.Count(have, "<line "))
+		assert.Equal(t, 3, strings.Count(have, "<text "))
+	})
+
+	t.Run("one column has no names and no dividers", func(t *testing.T) {
+		// --- Given ---
+		rnd := must.Value(NewRenderer())
+		buf := &bytes.Buffer{}
+		lay := layout{cols: []column{{name: "one", left: 100, width: 200}}}
+
+		// --- When ---
+		rnd.columns(buf, lay)
+
+		// --- Then ---
+		assert.Equal(t, "", buf.String())
+	})
+}
+
+func Test_Renderer_line(t *testing.T) {
 	// --- Given ---
 	rnd := must.Value(NewRenderer())
 	buf := &bytes.Buffer{}
 
 	// --- When ---
-	rnd.separator(buf, "1", "2", 3.5)
+	rnd.line(buf, 1, 3.5, 2, 4)
 
 	// --- Then ---
 	want := "" +
-		`<line x1="1" y1="3.5" x2="2" y2="3.5" stroke="` + colorLevel +
+		`<line x1="1" y1="3.5" x2="2" y2="4" stroke="` + colorLevel +
 		`" stroke-width="` + num(strokeW) +
 		`" stroke-dasharray="8 10"/>` + "\n"
 	assert.Equal(t, want, buf.String())
@@ -236,7 +449,7 @@ func Test_Renderer_modules(t *testing.T) {
 	rnd := must.Value(NewRenderer())
 	buf := &bytes.Buffer{}
 	grp := newGraph(map[string][]string{"a": {"b"}, "b": nil})
-	lay := rnd.layout(grp)
+	lay := rnd.layout(grp, nil)
 	ids := moduleIDs(grp)
 	cls := relClasses(grp, ids)
 	bdg := badges(grp, ids)
@@ -281,6 +494,51 @@ func Test_Renderer_orders(t *testing.T) {
 
 		// --- Then ---
 		assert.Equal(t, "", buf.String())
+	})
+}
+
+func Test_place(t *testing.T) {
+	t.Run("first keeping column wins", func(t *testing.T) {
+		// --- Given ---
+		grp := newGraph(map[string][]string{
+			"one/a": nil,
+			"two/a": nil,
+			"two/b": {"one/a"},
+			"two/c": nil,
+		})
+		cols := []Column{
+			{Filter: mod.NewFilter([]string{"one/*", "two/c"}, nil)},
+			{Filter: mod.NewFilter([]string{"two/*"}, nil)},
+		}
+
+		// --- When ---
+		cells, slots := place(grp, cols)
+
+		// --- Then ---
+		want := map[string]cell{
+			"one/a": {col: 0, pos: 0},
+			"two/a": {col: 1, pos: 0},
+			"two/c": {col: 0, pos: 1},
+			"two/b": {col: 1, pos: 0},
+		}
+		assert.Equal(t, want, cells)
+		assert.Equal(t, []int{2, 1}, slots)
+	})
+
+	t.Run("a module no column keeps goes first", func(t *testing.T) {
+		// --- Given ---
+		grp := newGraph(map[string][]string{"x": nil})
+		cols := []Column{
+			{Filter: mod.NewFilter([]string{"one/*"}, nil)},
+			{Filter: mod.NewFilter([]string{"two/*"}, nil)},
+		}
+
+		// --- When ---
+		cells, slots := place(grp, cols)
+
+		// --- Then ---
+		assert.Equal(t, map[string]cell{"x": {col: 0, pos: 0}}, cells)
+		assert.Equal(t, []int{1, 0}, slots)
 	})
 }
 

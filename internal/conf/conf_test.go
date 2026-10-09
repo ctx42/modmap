@@ -18,18 +18,19 @@ func Test_Load(t *testing.T) {
 		// --- Given ---
 		dir := t.TempDir()
 		pth := writeConf(t, ""+
+			"out: /out/ctx42.svg\n"+
 			"maps:\n"+
 			"  - name: ctx42\n"+
 			"    dirs: [/src/ctx42]\n"+
 			"    include: ['github.com/ctx42/*']\n"+
-			"    exclude: ['github.com/ctx42/tst-*']\n"+
-			"    out: /out/ctx42.svg\n", dir)
+			"    exclude: ['github.com/ctx42/tst-*']\n", dir)
 
 		// --- When ---
 		have, err := Load(pth)
 
 		// --- Then ---
 		assert.NoError(t, err)
+		assert.Equal(t, "/out/ctx42.svg", have.Out)
 		assert.Len(t, 1, have.Maps)
 		assert.Equal(t, "ctx42", have.Maps[0].Name)
 		assert.Equal(t, []string{"/src/ctx42"}, have.Maps[0].Dirs)
@@ -37,27 +38,24 @@ func Test_Load(t *testing.T) {
 		assert.Equal(t, wInc, have.Maps[0].Include)
 		wExc := []string{"github.com/ctx42/tst-*"}
 		assert.Equal(t, wExc, have.Maps[0].Exclude)
-		assert.Equal(t, "/out/ctx42.svg", have.Maps[0].Out)
 	})
 
 	t.Run("relative paths resolve against the file", func(t *testing.T) {
 		// --- Given ---
 		dir := t.TempDir()
 		pth := writeConf(t, ""+
+			"out: tmp/here.svg\n"+
 			"maps:\n"+
 			"  - name: here\n"+
-			"    dirs: [..]\n"+
-			"    out: tmp/here.svg\n", dir)
+			"    dirs: [..]\n", dir)
 
 		// --- When ---
 		have, err := Load(pth)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		wDir := filepath.Dir(dir)
-		assert.Equal(t, []string{wDir}, have.Maps[0].Dirs)
-		wOut := filepath.Join(dir, "tmp", "here.svg")
-		assert.Equal(t, wOut, have.Maps[0].Out)
+		assert.Equal(t, filepath.Join(dir, "tmp", "here.svg"), have.Out)
+		assert.Equal(t, []string{filepath.Dir(dir)}, have.Maps[0].Dirs)
 	})
 
 	t.Run("error - file does not exist", func(t *testing.T) {
@@ -85,16 +83,12 @@ func Test_Load(t *testing.T) {
 		assert.Nil(t, have)
 	})
 
-	t.Run("error - same output spelled differently", func(t *testing.T) {
+	t.Run("error - no output", func(t *testing.T) {
 		// --- Given ---
 		pth := writeConf(t, ""+
 			"maps:\n"+
 			"  - name: a\n"+
-			"    dirs: [src]\n"+
-			"    out: a.svg\n"+
-			"  - name: b\n"+
-			"    dirs: [src]\n"+
-			"    out: ./a.svg\n",
+			"    dirs: [src]\n",
 			t.TempDir(),
 		)
 
@@ -102,18 +96,37 @@ func Test_Load(t *testing.T) {
 		have, err := Load(pth)
 
 		// --- Then ---
-		assert.ErrorIs(t, ErrDupOut, err)
+		assert.ErrorIs(t, ErrNoOut, err)
+		assert.Nil(t, have)
+	})
+
+	t.Run("error - output on a map", func(t *testing.T) {
+		// --- Given ---
+		pth := writeConf(t, ""+
+			"out: all.svg\n"+
+			"maps:\n"+
+			"  - name: a\n"+
+			"    dirs: [src]\n"+
+			"    out: a.svg\n",
+			t.TempDir(),
+		)
+
+		// --- When ---
+		have, err := Load(pth)
+
+		// --- Then ---
+		assert.ErrorRegexp(t, "^parse configuration: .*out", err)
 		assert.Nil(t, have)
 	})
 
 	t.Run("error - unknown key", func(t *testing.T) {
 		// --- Given ---
 		pth := writeConf(t, ""+
+			"out: a.svg\n"+
 			"maps:\n"+
 			"  - name: a\n"+
 			"    dirs: [src]\n"+
-			"    exlude: [example.com/x]\n"+
-			"    out: a.svg\n",
+			"    exlude: [example.com/x]\n",
 			t.TempDir(),
 		)
 
@@ -127,7 +140,7 @@ func Test_Load(t *testing.T) {
 
 	t.Run("error - invalid configuration", func(t *testing.T) {
 		// --- Given ---
-		pth := writeConf(t, "maps: []\n", t.TempDir())
+		pth := writeConf(t, "out: a.svg\nmaps: []\n", t.TempDir())
 
 		// --- When ---
 		have, err := Load(pth)
@@ -191,11 +204,11 @@ func Test_Config_Names(t *testing.T) {
 }
 
 func Test_Config_validate(t *testing.T) {
-	valid := Map{Name: "a", Dirs: []string{"/src"}, Out: "/out.svg"}
+	valid := Map{Name: "a", Dirs: []string{"/src"}}
 
 	t.Run("valid", func(t *testing.T) {
 		// --- Given ---
-		cfg := &Config{Maps: []Map{valid}}
+		cfg := &Config{Out: "/out.svg", Maps: []Map{valid}}
 
 		// --- When ---
 		err := cfg.validate()
@@ -206,7 +219,8 @@ func Test_Config_validate(t *testing.T) {
 
 	t.Run("error - no name", func(t *testing.T) {
 		// --- Given ---
-		cfg := &Config{Maps: []Map{valid, {Dirs: []string{"/src"}}}}
+		maps := []Map{valid, {Dirs: []string{"/src"}}}
+		cfg := &Config{Out: "/out.svg", Maps: maps}
 
 		// --- When ---
 		err := cfg.validate()
@@ -217,58 +231,36 @@ func Test_Config_validate(t *testing.T) {
 }
 
 func Test_Config_validate_tabular(t *testing.T) {
-	valid := Map{Name: "a", Dirs: []string{"/src"}, Out: "/out.svg"}
+	valid := Map{Name: "a", Dirs: []string{"/src"}}
 
 	tt := []struct {
 		testN string
 
+		out  string
 		maps []Map
 		want error
 	}{
-		{"no maps", nil, ErrNoMaps},
-		{
-			"no name",
-			[]Map{{Dirs: []string{"/src"}, Out: "/out.svg"}},
-			ErrNoName,
-		},
-		{"duplicate name", []Map{valid, valid}, ErrDupName},
-		{"no dirs", []Map{{Name: "a", Out: "/out.svg"}}, ErrNoDirs},
+		{"no maps", "/out.svg", nil, ErrNoMaps},
+		{"no output", "", []Map{valid}, ErrNoOut},
+		{"no name", "/out.svg", []Map{{Dirs: []string{"/src"}}}, ErrNoName},
+		{"duplicate name", "/out.svg", []Map{valid, valid}, ErrDupName},
+		{"no dirs", "/out.svg", []Map{{Name: "a"}}, ErrNoDirs},
 		{
 			"empty dir",
-			[]Map{{Name: "a", Dirs: []string{""}, Out: "/out.svg"}},
+			"/out.svg",
+			[]Map{{Name: "a", Dirs: []string{""}}},
 			ErrEmptyDir,
 		},
 		{
-			"no output",
-			[]Map{{Name: "a", Dirs: []string{"/src"}}},
-			ErrNoOut,
-		},
-		{
-			"duplicate output",
-			[]Map{
-				valid,
-				{Name: "b", Dirs: []string{"/src"}, Out: "/out.svg"},
-			},
-			ErrDupOut,
-		},
-		{
 			"malformed include glob",
-			[]Map{{
-				Name:    "a",
-				Dirs:    []string{"/src"},
-				Include: []string{"["},
-				Out:     "/out.svg",
-			}},
+			"/out.svg",
+			[]Map{{Name: "a", Dirs: []string{"/src"}, Include: []string{"["}}},
 			mod.ErrInvGlob,
 		},
 		{
 			"malformed exclude glob",
-			[]Map{{
-				Name:    "a",
-				Dirs:    []string{"/src"},
-				Exclude: []string{"["},
-				Out:     "/out.svg",
-			}},
+			"/out.svg",
+			[]Map{{Name: "a", Dirs: []string{"/src"}, Exclude: []string{"["}}},
 			mod.ErrInvGlob,
 		},
 	}
@@ -276,7 +268,7 @@ func Test_Config_validate_tabular(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.testN, func(t *testing.T) {
 			// --- Given ---
-			cfg := &Config{Maps: tc.maps}
+			cfg := &Config{Out: tc.out, Maps: tc.maps}
 
 			// --- When ---
 			err := cfg.validate()
@@ -288,25 +280,38 @@ func Test_Config_validate_tabular(t *testing.T) {
 }
 
 func Test_Config_resolve(t *testing.T) {
-	// --- Given ---
-	cfg := &Config{Maps: []Map{
-		{Name: "a", Dirs: []string{"src", "/abs"}, Out: "out/a.svg"},
-		{Name: "b", Dirs: []string{""}, Out: ""},
-	}}
+	t.Run("relative paths", func(t *testing.T) {
+		// --- Given ---
+		cfg := &Config{
+			Out: "out/all.svg",
+			Maps: []Map{
+				{Name: "a", Dirs: []string{"src", "/abs"}},
+				{Name: "b", Dirs: []string{""}},
+			},
+		}
 
-	// --- When ---
-	cfg.resolve("/cfg")
+		// --- When ---
+		cfg.resolve("/cfg")
 
-	// --- Then ---
-	want := []Map{
-		{
-			Name: "a",
-			Dirs: []string{"/cfg/src", "/abs"},
-			Out:  "/cfg/out/a.svg",
-		},
-		{Name: "b", Dirs: []string{""}, Out: ""},
-	}
-	assert.Equal(t, want, cfg.Maps)
+		// --- Then ---
+		assert.Equal(t, "/cfg/out/all.svg", cfg.Out)
+		want := []Map{
+			{Name: "a", Dirs: []string{"/cfg/src", "/abs"}},
+			{Name: "b", Dirs: []string{""}},
+		}
+		assert.Equal(t, want, cfg.Maps)
+	})
+
+	t.Run("empty output stays empty", func(t *testing.T) {
+		// --- Given ---
+		cfg := &Config{Maps: []Map{{Name: "a", Dirs: []string{"src"}}}}
+
+		// --- When ---
+		cfg.resolve("/cfg")
+
+		// --- Then ---
+		assert.Equal(t, "", cfg.Out)
+	})
 }
 
 func Test_absPath_tabular(t *testing.T) {

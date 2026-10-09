@@ -45,11 +45,11 @@ type config struct {
 	// option. When set, it is the only source of directories and globs.
 	conf string
 
-	// Names of the configuration file maps to generate. An empty list
-	// generates every map the file declares.
+	// Names of the configuration file maps to draw, as columns from left
+	// to right. An empty list draws every map the file declares.
 	names []string
 
-	// Open the map in a browser instead of writing it to a file. Set
+	// Open the image in a browser instead of writing it to a file. Set
 	// by the "--web" option.
 	web bool
 
@@ -134,17 +134,13 @@ func (cfg *config) parse(args []string) error {
 }
 
 // parseConf validates and resolves the configuration file mode, where
-// the file is the only source of directories, globs, and outputs.
+// the file is the only source of directories, globs, and the output.
 func (cfg *config) parseConf(wd string) error {
 	if cfg.out != "" || len(cfg.include)+len(cfg.exclude) > 0 {
 		return errConfOnly
 	}
-	left := cfg.fs.Args()
-	if cfg.web && len(left) != 1 {
-		return errWebMap
-	}
 	cfg.conf = abs(wd, cfg.conf)
-	cfg.names = left
+	cfg.names = cfg.fs.Args()
 	return nil
 }
 
@@ -176,7 +172,7 @@ func (cfg *config) help() string {
 		"  %[1]s [options] -o <file.svg> <dir>\n" +
 		"  %[1]s [options] --web <dir>\n" +
 		"  %[1]s -c <config.yaml> [map...]\n" +
-		"  %[1]s --web -c <config.yaml> <map>\n" +
+		"  %[1]s --web -c <config.yaml> [map...]\n" +
 		"\n" +
 		"Options:\n" +
 		"%[2]s"
