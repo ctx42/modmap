@@ -53,9 +53,10 @@ maps:
   - name: ctx42
 
     # Directories scanned for Go modules. Every go.mod file found below them
-    # is a module, nested ones included, but the .git, testdata, and vendor
-    # directories are never descended into. At least one directory is
-    # required, and a map may list several.
+    # is a module, nested ones included, but directories whose names start
+    # with "." or "_", testdata and vendor directories, and module cache
+    # entries (names holding "@") are never descended into. At least one
+    # directory is required, and a map may list several.
     dirs:
       - /home/you/src/ctx42
 

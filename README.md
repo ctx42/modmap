@@ -1,3 +1,7 @@
+[![Go](https://github.com/ctx42/modmap/actions/workflows/go.yml/badge.svg)](https://github.com/ctx42/modmap/actions/workflows/go.yml)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/ctx42/modmap)](go.mod)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
+
 # modmap
 
 Draw the modules of a Go workspace as an interactive map, so you can see
@@ -50,20 +54,14 @@ install to look at it.
 
 ## Installation
 
-> [!NOTE]
-> The module is not published yet, so `go install` cannot reach it.
-> Build from a checkout until it is.
+```shell
+go install github.com/ctx42/modmap/cmd/modmap@latest
+```
 
 From a checkout:
 
 ```shell
 go build -o dist/modmap ./cmd/modmap
-```
-
-Once published:
-
-```shell
-go install github.com/ctx42/modmap/cmd/modmap@latest
 ```
 
 ## Usage
@@ -100,8 +98,8 @@ pinned, but it reads 2 when `xdef` is pinned and 3 when `testing` is:
 the level counts from the bottom of the whole map, the digit counts
 from the module you pinned.
 
-`-o` is required unless the map is opened with `--web`: `modmap`
-never writes an SVG to a terminal.
+`-o` is required unless the maps come from `-c` or are opened with
+`--web`: `modmap` never writes an SVG to a terminal.
 
 ### Filtering
 
@@ -134,8 +132,9 @@ The page and the map it shows are written under the system temporary
 directory — `/tmp/modmap` on Linux — and the path of the page is
 printed. Nothing is served: the browser opens the page from disk and
 `modmap` is done, so there is no port to pick and no Ctrl-C to press.
-Every run rewrites the same two files, named after the map, so the pages
-never pile up and reloading the page after a run shows the new map.
+Every run showing the same maps rewrites the same two files, named after
+them, so the pages never pile up and reloading the page after a run
+shows the new map.
 Because the destination is not yours to pick, `--web` and `-o` cannot be
 combined; the page links the SVG written beside it when you want to keep
 the map after all.
