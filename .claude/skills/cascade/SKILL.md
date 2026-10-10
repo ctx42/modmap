@@ -97,8 +97,9 @@ Run every command of a module in its directory. Release every module of the
 plan not marked, applications included; stop at the first failure, roll
 nothing back, and hand back with the failing step logged `-f`.
 
-1. Run `gomake :cascade:env --dir ROOT` once; its `KEY=VALUE` lines are `ENV`
-   below.
+1. Run `gomake :cascade:env --dir ROOT` once; its `KEY=VALUE` lines but
+   `GOWORK=off` are `ENV` below. Leave `GOWORK` alone: the go commands tests
+   run inherit it.
 2. Round 1, the changed module:
    1. With uncommitted changes, stage them all (`git add -A`) and commit
       with `/cm mini apply`; log `-s commit`. Its unpushed commits stay.
