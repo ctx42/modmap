@@ -14,7 +14,8 @@ import (
 // by rng, renders the requested maps into one image, and returns the process
 // exit code. The usage text and every error are written to stderr; the image
 // goes to the output file or, with the "--web" option, to a browser, and
-// never to stdout.
+// never to stdout. With the "--plan" option no image is rendered: the update
+// plan is printed to stdout as JSON instead.
 //
 // The exit code is 0 on success and 1 on a usage or rendering failure.
 func Main(ctx context.Context, rng *ring.Ring) int {

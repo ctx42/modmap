@@ -9,8 +9,10 @@ reaching it, directly or through others: the set which has to be updated when
 that module changes. `Order` puts that set in the order to work through it:
 the changed module first, and every other module one round after the
 highest-ordered module it relies on, so the modules sharing a number may be
-updated in any order. A dependency circle is an error, reported with the
-path around it.
+updated in any order. `Cascade` returns the same work as rounds, keeping
+only the dependents a predicate accepts and listing the rest as skipped; a
+kept module reaching the change only through a skipped one still comes
+after it. A dependency circle is an error, reported with the path around it.
 
 ```shell
 go get github.com/ctx42/modmap/pkg/graph
@@ -34,4 +36,9 @@ for level, nodes := range grp.Levels {
 for pth, round := range grp.Order("example.com/core") {
     fmt.Println(round, pth)
 }
+
+// The same rounds without the dependents outside "example.com".
+keep := func(pth string) bool { return strings.HasPrefix(pth, "example.com/") }
+cas := grp.Cascade("example.com/core", keep)
+fmt.Println(cas.Rounds, cas.Skipped)
 ```

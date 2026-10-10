@@ -5,6 +5,7 @@ package cli
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -42,6 +43,66 @@ func crossMaps(t tester.T) string {
 		"    dirs: ["+filepath.Join(src, "customer")+"]\n"+
 		"    include: ['github.com/customer/*']\n",
 		t.TempDir(), "modmap.yaml",
+	)
+}
+
+// planMaps writes the modules of two maps and the configuration declaring
+// them. Map "ctx42" holds github.com/ctx42/testing, github.com/ctx42/a, which
+// requires github.com/customer/b, and github.com/ctx42/d, which requires
+// github.com/ctx42/testing. Map "work" holds github.com/customer/b, which
+// requires github.com/ctx42/testing. It returns the path of the configuration
+// and the directory holding the modules.
+func planMaps(t tester.T) (string, string) {
+	t.Helper()
+	src := t.TempDir()
+	writeMod(t, "module github.com/ctx42/testing\n", src, "ctx42", "testing")
+	writeMod(t, ""+
+		"module github.com/ctx42/a\n"+
+		"require github.com/customer/b v0.1.0\n",
+		src, "ctx42", "a",
+	)
+	writeMod(t, ""+
+		"module github.com/ctx42/d\n"+
+		"require github.com/ctx42/testing v0.1.0\n",
+		src, "ctx42", "d",
+	)
+	writeMod(t, ""+
+		"module github.com/customer/b\n"+
+		"require github.com/ctx42/testing v0.1.0\n",
+		src, "customer", "b",
+	)
+	cnf := oskit.Create(t, ""+
+		"out: all.svg\n"+
+		"maps:\n"+
+		"  - name: ctx42\n"+
+		"    dirs: ["+filepath.Join(src, "ctx42")+"]\n"+
+		"    include: ['github.com/ctx42/*']\n"+
+		"  - name: work\n"+
+		"    dirs: ["+filepath.Join(src, "customer")+"]\n"+
+		"    include: ['github.com/customer/*']\n",
+		t.TempDir(), "modmap.yaml",
+	)
+	return cnf, src
+}
+
+// proxyEnv returns the process environment with the go command reading
+// modules from a proxy on disk serving the go.mod files, keyed by module
+// path, each at version v1.0.0.
+func proxyEnv(t tester.T, mods map[string]string) []string {
+	t.Helper()
+	dir := t.TempDir()
+	for pth, content := range mods {
+		ver := oskit.MkdirAll(t, dir, pth, "@v")
+		oskit.Create(t, "v1.0.0\n", ver, "list")
+		oskit.Create(t, content, ver, "v1.0.0.mod")
+		oskit.Create(t, `{"Version":"v1.0.0"}`, ver, "v1.0.0.info")
+	}
+	return append(
+		os.Environ(),
+		"GOPROXY=file://"+filepath.ToSlash(dir),
+		"GOSUMDB=off",
+		"GOFLAGS=-mod=mod",
+		"GOMODCACHE="+t.TempDir(),
 	)
 }
 

@@ -108,3 +108,39 @@ func ExampleGraph_Order() {
 	// 2 example.com/lib
 	// 3 example.com/app
 }
+
+func ExampleGraph_Cascade() {
+	mods := map[string]*mod.Module{
+		"example.com/app": {
+			Path: "example.com/app",
+			Requires: []mod.Require{
+				{Path: "other.com/lib", Ver: "v1.0.0"},
+			},
+		},
+		"other.com/lib": {
+			Path: "other.com/lib",
+			Requires: []mod.Require{
+				{Path: "example.com/core", Ver: "v1.0.0"},
+			},
+		},
+		"example.com/core": {Path: "example.com/core"},
+	}
+
+	grp, err := graph.New(mods)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	keep := func(pth string) bool { return pth != "other.com/lib" }
+	cas := grp.Cascade("example.com/core", keep)
+
+	for idx, rnd := range cas.Rounds {
+		fmt.Println(idx+1, rnd)
+	}
+	fmt.Println("skipped", cas.Skipped)
+	// Output:
+	// 1 [example.com/core]
+	// 2 [example.com/app]
+	// skipped [other.com/lib]
+}

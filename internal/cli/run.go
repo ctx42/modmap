@@ -35,6 +35,9 @@ func run(ctx context.Context, rng *ring.Ring, cfg *config) error {
 	if err != nil {
 		return err
 	}
+	if cfg.plan != "" {
+		return runPlan(ctx, rng, cfg, fil)
+	}
 	maps, err := fil.Select(cfg.names)
 	if err != nil {
 		return err
@@ -110,28 +113,11 @@ func generate(
 	spc spec,
 ) error {
 
-	logf := func(format string, args ...any) {
-		_, _ = fmt.Fprintf(rng.Stderr(), format+"\n", args...)
-	}
-	mods, err := mod.NewScanner(spc.Filter, logf).Scan(ctx, spc.Dirs)
+	logf := logger(rng)
+	_, grp, err := build(ctx, rng, logf, spc)
 	if err != nil {
 		return err
 	}
-
-	rsv, err := mod.NewResolver(spc.Filter, rng.EnvAll(), logf)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = rsv.Close() }()
-	if err = rsv.Resolve(ctx, mods); err != nil {
-		return err
-	}
-
-	grp, err := graph.New(mods)
-	if err != nil {
-		return err
-	}
-	logf("graph has %d modules, widest level %d", grp.Len(), grp.Widest())
 
 	render, err := confirm(ctx, rng, grp.Widest(), cfg.yes)
 	if err != nil {
@@ -144,6 +130,37 @@ func generate(
 		return show(logf, cfg, spc, grp)
 	}
 	return write(grp, spc.Columns, spc.Out)
+}
+
+// build scans the directories of spc, resolves the requirements of the
+// modules found, and returns the modules with the graph built from them.
+func build(
+	ctx context.Context,
+	rng *ring.Ring,
+	logf func(format string, args ...any),
+	spc spec,
+) (map[string]*mod.Module, *graph.Graph, error) {
+
+	mods, err := mod.NewScanner(spc.Filter, logf).Scan(ctx, spc.Dirs)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	rsv, err := mod.NewResolver(spc.Filter, rng.EnvAll(), logf)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer func() { _ = rsv.Close() }()
+	if err = rsv.Resolve(ctx, mods); err != nil {
+		return nil, nil, err
+	}
+
+	grp, err := graph.New(mods)
+	if err != nil {
+		return nil, nil, err
+	}
+	logf("graph has %d modules, widest level %d", grp.Len(), grp.Widest())
+	return mods, grp, nil
 }
 
 // show renders the graph into a page under the system temporary directory

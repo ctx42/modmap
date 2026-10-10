@@ -294,6 +294,25 @@ func Test_run(t *testing.T) {
 		assert.Contain(t, "graph has 1 modules", tst.Stderr())
 	})
 
+	t.Run("plan printed instead of a map", func(t *testing.T) {
+		// --- Given ---
+		cnf, _ := planMaps(t)
+		names := []string{"ctx42"}
+		cfg := &config{conf: cnf, plan: "github.com/ctx42/d", names: names}
+		tst := ringtest.New(t).WetStdout().WetStderr()
+		rng := tst.Ring()
+
+		// --- When ---
+		err := run(t.Context(), rng, cfg)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Contain(t, `"module": "github.com/ctx42/d"`, tst.Stdout())
+		assert.Len(t, 1, must.Value(os.ReadDir(filepath.Dir(cnf))))
+
+		assert.Contain(t, "graph has 4 modules", tst.Stderr())
+	})
+
 	t.Run("error - unknown map name", func(t *testing.T) {
 		// --- Given ---
 		cfg := &config{conf: crossMaps(t), names: []string{"three"}}

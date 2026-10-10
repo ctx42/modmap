@@ -20,6 +20,7 @@ const (
 	usgConf    = "path of the YAML configuration file"
 	usgWeb     = "open the map in a browser instead of writing it"
 	usgYes     = "do not ask for confirmation on wide levels"
+	usgPlan    = "print the update plan of the changed module as JSON"
 	usgHelp    = "show this help"
 )
 
@@ -46,8 +47,13 @@ type config struct {
 	conf string
 
 	// Names of the configuration file maps to draw, as columns from left
-	// to right. An empty list draws every map the file declares.
+	// to right. An empty list draws every map the file declares. With the
+	// "--plan" option it holds the single map the plan is limited to.
 	names []string
+
+	// Module path of the changed module whose update plan is printed instead
+	// of drawing a map. Set by the "--plan" option.
+	plan string
 
 	// Open the image in a browser instead of writing it to a file. Set
 	// by the "--web" option.
@@ -96,6 +102,7 @@ func (cfg *config) flags() func() {
 	fConf := cfg.fs.StringSL("config", "c", "", usgConf)
 	fWeb := cfg.fs.Bool("web", false, usgWeb)
 	fYes := cfg.fs.BoolSL("yes", "y", false, usgYes)
+	fPlan := cfg.fs.String("plan", "", usgPlan)
 	fHelp := cfg.fs.BoolSL("help", "h", false, usgHelp)
 
 	return func() {
@@ -103,6 +110,7 @@ func (cfg *config) flags() func() {
 		cfg.conf = *fConf
 		cfg.web = *fWeb
 		cfg.yes = *fYes
+		cfg.plan = *fPlan
 		cfg.showHelp = *fHelp
 	}
 }
@@ -127,6 +135,12 @@ func (cfg *config) parse(args []string) error {
 	if cfg.web && cfg.out != "" {
 		return errWebOut
 	}
+	if cfg.plan != "" && cfg.web {
+		return errPlanWeb
+	}
+	if cfg.plan != "" && cfg.conf == "" {
+		return errPlanConf
+	}
 	if cfg.conf != "" {
 		return cfg.parseConf(wd)
 	}
@@ -141,6 +155,9 @@ func (cfg *config) parseConf(wd string) error {
 	}
 	cfg.conf = abs(wd, cfg.conf)
 	cfg.names = cfg.fs.Args()
+	if cfg.plan != "" && len(cfg.names) != 1 {
+		return errPlanMap
+	}
 	return nil
 }
 
@@ -173,6 +190,7 @@ func (cfg *config) help() string {
 		"  %[1]s [options] --web <dir>\n" +
 		"  %[1]s -c <config.yaml> [map...]\n" +
 		"  %[1]s --web -c <config.yaml> [map...]\n" +
+		"  %[1]s -c <config.yaml> --plan <module> <map>\n" +
 		"\n" +
 		"Options:\n" +
 		"%[2]s"

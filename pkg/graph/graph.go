@@ -108,6 +108,60 @@ func (grp *Graph) Order(pth string) map[string]int {
 	return ord
 }
 
+// Cascade returns the update rounds of the modules which have to change when
+// the module at pth changes, keeping only the dependents keep accepts. The
+// changed module is alone in the first round, and every kept dependent comes
+// one round after the highest round module it reaches, directly or through
+// other modules, so a dependent reaching the change only through a module
+// keep rejects still comes after it. A nil keep keeps every dependent. It
+// returns nil when the graph has no such module.
+func (grp *Graph) Cascade(pth string, keep func(pth string) bool) *Cascade {
+	nod, ok := grp.nodes[pth]
+	if !ok {
+		return nil
+	}
+	cas := &Cascade{}
+	set := map[string]bool{pth: true}
+	for _, dep := range nod.Dependents {
+		if keep == nil || keep(dep) {
+			set[dep] = true
+			continue
+		}
+		cas.Skipped = append(cas.Skipped, dep)
+	}
+
+	// A module waits for every module of the set it reaches.
+	waits := make(map[string][]string, len(set))
+	for cur := range set {
+		for _, dep := range grp.nodes[cur].Dependents {
+			if set[dep] {
+				waits[dep] = append(waits[dep], cur)
+			}
+		}
+	}
+	ord := make(map[string]int, len(set))
+	var rank func(cur string) int
+	rank = func(cur string) int {
+		if num, has := ord[cur]; has {
+			return num
+		}
+		var top int
+		for _, dep := range waits[cur] {
+			top = max(top, rank(dep))
+		}
+		ord[cur] = top + 1
+		return ord[cur]
+	}
+	for _, cur := range slices.Sorted(maps.Keys(set)) {
+		num := rank(cur)
+		for len(cas.Rounds) < num {
+			cas.Rounds = append(cas.Rounds, nil)
+		}
+		cas.Rounds[num-1] = append(cas.Rounds[num-1], cur)
+	}
+	return cas
+}
+
 // paths returns the sorted module paths of every node in the graph.
 func (grp *Graph) paths() []string {
 	return slices.Sorted(maps.Keys(grp.nodes))

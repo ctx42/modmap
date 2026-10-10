@@ -67,3 +67,11 @@ func replaceFile(pth string, data []byte) error {
 func fail(rng *ring.Ring, err error) {
 	_, _ = fmt.Fprintf(rng.Stderr(), "%s: %s\n", binName, err)
 }
+
+// logger returns the progress reporter writing every message as a line to
+// stderr.
+func logger(rng *ring.Ring) func(format string, args ...any) {
+	return func(format string, args ...any) {
+		_, _ = fmt.Fprintf(rng.Stderr(), format+"\n", args...)
+	}
+}

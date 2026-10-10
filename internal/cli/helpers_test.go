@@ -166,3 +166,15 @@ func Test_fail(t *testing.T) {
 	// --- Then ---
 	assert.Equal(t, "modmap: boom\n", tst.Stderr())
 }
+
+func Test_logger(t *testing.T) {
+	// --- Given ---
+	tst := ringtest.New(t).WetStderr()
+	logf := logger(tst.Ring())
+
+	// --- When ---
+	logf("found %s", "example.com/a")
+
+	// --- Then ---
+	assert.Equal(t, "found example.com/a\n", tst.Stderr())
+}

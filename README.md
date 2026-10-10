@@ -47,6 +47,8 @@ install to look at it.
   server to stop and no file to name.
 - Several maps drawn side by side in one image, one column each, with
   requirements crossing the columns lit and numbered like any other.
+- `--plan` prints the update rounds of a changed module, with the
+  directory of each module, as JSON for a tool to work through.
 
 ## Prerequisites
 
@@ -171,6 +173,55 @@ filters, and the output path, so `--include`, `--exclude`, and `-o`
 cannot be combined with `-c`. See
 [modmap.example.yaml](modmap.example.yaml), which documents every key.
 
+### Planning an update
+
+`--plan` prints, instead of drawing anything, the update plan of a
+changed module as JSON on stdout, limited to one map of the
+configuration file:
+
+```shell
+modmap -c modmap.yaml --plan github.com/ctx42/testkit ctx42
+```
+
+```json
+{
+  "module": "github.com/ctx42/testkit",
+  "map": "ctx42",
+  "rounds": [
+    [
+      {
+        "path": "github.com/ctx42/testkit",
+        "dir": "/src/ctx42/testkit"
+      }
+    ],
+    [
+      {
+        "path": "github.com/ctx42/ring",
+        "dir": "/src/ctx42/ring"
+      }
+    ]
+  ],
+  "excluded": [
+    {
+      "path": "github.com/customer/app",
+      "dir": "/src/customer/app"
+    }
+  ]
+}
+```
+
+The first round holds the changed module alone; every other module comes
+one round after the highest round module it reaches, and the modules of
+a round are sorted by module path. The directories of every map are
+scanned, so a dependent the map does not keep is found and listed under
+`excluded`, as is a dependent read from the module cache, which has no
+`dir`. A module of the map reaching the change only through an excluded
+one is still planned, after the change.
+
+The changed module has to be kept by the map and found on disk. `--plan`
+needs `-c` and exactly one map name, and cannot be combined with
+`--web`.
+
 ## Configuration
 
 Command line options:
@@ -182,6 +233,7 @@ Command line options:
 | `-i, --include` | draw only modules matching the glob; repeatable  |
 | `-e, --exclude` | never draw modules matching the glob; repeatable |
 | `-c, --config`  | configuration file naming the maps to generate   |
+| `--plan`        | print the update plan of a module as JSON        |
 | `-y, --yes`     | do not ask before rendering a very wide level    |
 | `-h, --help`    | show usage                                       |
 
@@ -229,7 +281,7 @@ line are not.
 | Package                    | What it does                              |
 |----------------------------|-------------------------------------------|
 | [pkg/mod](pkg/mod)         | find modules, read and resolve `go.mod`   |
-| [pkg/graph](pkg/graph)     | levels, cycle detection, dependent sets   |
+| [pkg/graph](pkg/graph)     | levels, cycle detection, update rounds    |
 
 ## License
 

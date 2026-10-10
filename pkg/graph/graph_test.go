@@ -294,6 +294,185 @@ func Test_Graph_Order(t *testing.T) {
 	})
 }
 
+func Test_Graph_Cascade(t *testing.T) {
+	keepAll := func(string) bool { return true }
+	skipW := func(pth string) bool { return pth != "w" }
+
+	t.Run("the changed module comes first", func(t *testing.T) {
+		// --- Given ---
+		mods := newMods(map[string][]string{
+			"a": {"b"},
+			"b": {"c"},
+			"c": nil,
+		})
+		grp := must.Value(New(mods))
+
+		// --- When ---
+		have := grp.Cascade("c", keepAll)
+
+		// --- Then ---
+		want := &Cascade{Rounds: [][]string{{"c"}, {"b"}, {"a"}}}
+		assert.Equal(t, want, have)
+	})
+
+	t.Run("independent modules share a sorted round", func(t *testing.T) {
+		// --- Given ---
+		mods := newMods(map[string][]string{
+			"z": {"p"},
+			"a": {"p"},
+			"c": {"a", "z", "p"},
+			"p": nil,
+		})
+		grp := must.Value(New(mods))
+
+		// --- When ---
+		have := grp.Cascade("p", keepAll)
+
+		// --- Then ---
+		want := &Cascade{Rounds: [][]string{{"p"}, {"a", "z"}, {"c"}}}
+		assert.Equal(t, want, have)
+	})
+
+	t.Run("a rejected dependent is skipped", func(t *testing.T) {
+		// --- Given ---
+		mods := newMods(map[string][]string{
+			"a": {"t"},
+			"w": {"t"},
+			"t": nil,
+		})
+		grp := must.Value(New(mods))
+
+		// --- When ---
+		have := grp.Cascade("t", skipW)
+
+		// --- Then ---
+		want := &Cascade{
+			Rounds:  [][]string{{"t"}, {"a"}},
+			Skipped: []string{"w"},
+		}
+		assert.Equal(t, want, have)
+	})
+
+	t.Run("reaching the change through a skipped module", func(t *testing.T) {
+		// --- Given ---
+		mods := newMods(map[string][]string{
+			"a": {"w"},
+			"w": {"t"},
+			"t": nil,
+		})
+		grp := must.Value(New(mods))
+
+		// --- When ---
+		have := grp.Cascade("t", skipW)
+
+		// --- Then ---
+		want := &Cascade{
+			Rounds:  [][]string{{"t"}, {"a"}},
+			Skipped: []string{"w"},
+		}
+		assert.Equal(t, want, have)
+	})
+
+	t.Run("a skipped module leaves no empty round", func(t *testing.T) {
+		// --- Given ---
+		mods := newMods(map[string][]string{
+			"a": {"w", "b"},
+			"w": {"b"},
+			"b": {"t"},
+			"t": nil,
+		})
+		grp := must.Value(New(mods))
+
+		// --- When ---
+		have := grp.Cascade("t", skipW)
+
+		// --- Then ---
+		want := &Cascade{
+			Rounds:  [][]string{{"t"}, {"b"}, {"a"}},
+			Skipped: []string{"w"},
+		}
+		assert.Equal(t, want, have)
+	})
+
+	t.Run("the modules the change relies on are left out", func(t *testing.T) {
+		// --- Given ---
+		mods := newMods(map[string][]string{
+			"app":  {"lib"},
+			"lib":  {"core"},
+			"core": nil,
+		})
+		grp := must.Value(New(mods))
+
+		// --- When ---
+		have := grp.Cascade("lib", keepAll)
+
+		// --- Then ---
+		want := &Cascade{Rounds: [][]string{{"lib"}, {"app"}}}
+		assert.Equal(t, want, have)
+	})
+
+	t.Run("a module without dependents is alone", func(t *testing.T) {
+		// --- Given ---
+		grp := must.Value(New(newMods(map[string][]string{"a": {"b"}})))
+
+		// --- When ---
+		have := grp.Cascade("a", keepAll)
+
+		// --- Then ---
+		assert.Equal(t, &Cascade{Rounds: [][]string{{"a"}}}, have)
+	})
+
+	t.Run("nil keep keeps every dependent", func(t *testing.T) {
+		// --- Given ---
+		mods := newMods(map[string][]string{"a": {"b"}, "b": nil})
+		grp := must.Value(New(mods))
+
+		// --- When ---
+		have := grp.Cascade("b", nil)
+
+		// --- Then ---
+		assert.Equal(t, &Cascade{Rounds: [][]string{{"b"}, {"a"}}}, have)
+	})
+
+	t.Run("unknown module", func(t *testing.T) {
+		// --- Given ---
+		grp := must.Value(New(newMods(map[string][]string{"a": nil})))
+
+		// --- When ---
+		have := grp.Cascade("b", keepAll)
+
+		// --- Then ---
+		assert.Nil(t, have)
+	})
+
+	t.Run("rounds agree with the update order", func(t *testing.T) {
+		// --- Given ---
+		deps := loadDeps(t, "testdata/ctx42_modules.json")
+		grp := must.Value(New(newMods(deps)))
+
+		// --- When ---
+		have := make(map[string]*Cascade, grp.Len())
+		for _, pth := range grp.paths() {
+			have[pth] = grp.Cascade(pth, keepAll)
+		}
+
+		// --- Then ---
+		assert.Len(t, grp.Len(), have)
+		for pin, cas := range have {
+			ord := grp.Order(pin)
+			var cnt int
+			for idx, rnd := range cas.Rounds {
+				for _, pth := range rnd {
+					assert.Equal(t, idx+1, ord[pth])
+					cnt++
+				}
+			}
+			assert.Equal(t, len(ord), cnt)
+			assert.Nil(t, cas.Skipped)
+		}
+	})
+}
+
 func Test_Graph_Widest(t *testing.T) {
 	t.Run("the busiest level counts", func(t *testing.T) {
 		// --- Given ---
