@@ -1,3 +1,7 @@
+## v0.4.0 (Sat, 10 Oct 2026 12:07:46 UTC)
+- build: bump testkit and golang.org/x dependencies.
+- feat: print the update plan of a changed module.
+
 ## v0.3.0 (Fri, 09 Oct 2026 19:45:01 UTC)
 - build: bump ctx42 dependencies.
 - fix(mod): keep the pattern error in ValidateGlob errors.
