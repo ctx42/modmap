@@ -1,3 +1,6 @@
+## v0.4.2 (Sat, 10 Oct 2026 19:36:09 UTC)
+- chore: drop GOWORK=off from the cascade release test env.
+
 ## v0.4.1 (Sat, 10 Oct 2026 19:26:44 UTC)
 - chore: add a skill cascading a module change to its dependents.
 - chore: release the dependents in the cascade skill.
