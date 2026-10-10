@@ -1,3 +1,9 @@
+## v0.4.1 (Sat, 10 Oct 2026 19:26:44 UTC)
+- chore: add a skill cascading a module change to its dependents.
+- chore: release the dependents in the cascade skill.
+- chore: test cascade dependents against per-module go.mod copies.
+- build(deps): update 5 ctx42 dependencies.
+
 ## v0.4.0 (Sat, 10 Oct 2026 12:07:46 UTC)
 - build: bump testkit and golang.org/x dependencies.
 - feat: print the update plan of a changed module.
