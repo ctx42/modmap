@@ -52,7 +52,7 @@ Run from the modmap checkout. Every `gomake :cascade:*` command takes
 
 1. `gomake :cascade:preflight --dir ROOT`. For each failing dependent, show
    the reason and ask the user to choose:
-   - skip it: left as it is, on its branch, clean and level with the origin
+   - skip it: left as it is, on its branch, clean and not behind the origin
      branch of the same name if there is one;
    - update it in place: updated on its branch, pushed there without a tag;
      needs that branch on origin;
@@ -62,11 +62,14 @@ Run from the modmap checkout. Every `gomake :cascade:*` command takes
    --skip` or `--in-place`; when it refuses in place, offer skip or stop.
    A failing changed module, or any stop, ends the run with the migration
    active. Run the preflight again until it passes.
-2. `gomake :cascade:workspace --dir ROOT` prints the workspace path `WORK`.
+2. `gomake :cascade:modfiles --dir ROOT` writes, per module, a copy of its
+   `go.mod` replacing the other plan modules by their local directories.
 3. For each module of the plan not skipped, in its directory:
-   `GOWORK=WORK gomake :go:test --dir ROOT/cascade/tests/<module>`, where
-   `<module>` is the module path with `/` replaced by `_` (create the
-   directory first). Log `-s test`, with `-f` on failure.
+   `gomake :go:test --dir ROOT/cascade/tests/<m> -- -mod=mod
+   -modfile=ROOT/cascade/mod/<m>/go.mod`, where `<m>` is the module path
+   with `/` replaced by `_` (create the tests directory first). Leave
+   `GOWORK` alone: the go commands tests run inherit it. Log `-s test`,
+   with `-f` on failure.
 4. On a build or test failure:
    1. Stop and explain the failure from the output.
    2. Propose the fix one change at a time; apply only the changes the user
