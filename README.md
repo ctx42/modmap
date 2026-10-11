@@ -47,8 +47,9 @@ install to look at it.
   server to stop and no file to name.
 - Several maps drawn side by side in one image, one column each, with
   requirements crossing the columns lit and numbered like any other.
-- `--plan` prints the update rounds of a changed module, with the
-  directory of each module, as JSON for a tool to work through.
+- `--plan` prints the update rounds of a changed module across every
+  map, with the map and directory of each module, as JSON for a tool to
+  work through.
 
 ## Prerequisites
 
@@ -176,51 +177,65 @@ cannot be combined with `-c`. See
 ### Planning an update
 
 `--plan` prints, instead of drawing anything, the update plan of a
-changed module as JSON on stdout, limited to one map of the
+changed module as JSON on stdout. The plan spans every map of the
 configuration file:
 
 ```shell
-modmap -c modmap.yaml --plan github.com/ctx42/testkit ctx42
+modmap -c modmap.yaml --plan github.com/ctx42/testkit
 ```
 
 ```json
 {
   "module": "github.com/ctx42/testkit",
-  "map": "ctx42",
   "rounds": [
     [
       {
         "path": "github.com/ctx42/testkit",
+        "map": "ctx42",
         "dir": "/src/ctx42/testkit"
       }
     ],
     [
       {
         "path": "github.com/ctx42/ring",
+        "map": "ctx42",
         "dir": "/src/ctx42/ring"
+      },
+      {
+        "path": "github.com/customer/app",
+        "map": "work",
+        "dir": "/src/customer/app"
       }
     ]
   ],
   "excluded": [
     {
-      "path": "github.com/customer/app",
-      "dir": "/src/customer/app"
+      "path": "github.com/ctx42/blog",
+      "map": "ctx42",
+      "dir": "/src/ctx42/blog"
+    },
+    {
+      "path": "github.com/other/lib"
     }
   ]
 }
 ```
 
-The first round holds the changed module alone; every other module comes
-one round after the highest round module it reaches, and the modules of
-a round are sorted by module path. The directories of every map are
-scanned, so a dependent the map does not keep is found and listed under
-`excluded`, as is a dependent read from the module cache, which has no
-`dir`. A module of the map reaching the change only through an excluded
-one is still planned, after the change.
+The plan holds the changed module and every module depending on it,
+directly or through other modules. The first round holds the changed
+module alone; every other module comes one round after the highest round
+module it reaches, and the modules of a round are sorted by module path.
+Each module names the map that found it on disk.
 
-The changed module has to be kept by the map and found on disk. `--plan`
-needs `-c` and exactly one map name, and cannot be combined with
-`--web`.
+A map finds a module when one of its `dirs` holds it and its `include`
+globs keep it. A dependent is planned only when every map finding it
+keeps it, so one map excluding it keeps it out. The dependents kept out
+are listed under `excluded`, as are those read from the module cache,
+which have no `map` or `dir`. A module reaching the change only through
+an excluded one is still planned, after the change.
+
+The changed module has to be found on disk and kept. `--plan` needs
+`-c`, takes no map name, and cannot be combined with `--web`.
 
 ## Configuration
 

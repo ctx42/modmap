@@ -1,12 +1,13 @@
 ---
 name: cascade
 description: >
-  Carries the release of a changed Go module through every module of a modmap
-  map that depends on it: plans the update rounds, checks the repositories,
-  tests each dependent against the local code, then, on the user's go-ahead,
-  updates, commits, tags, and pushes them one by one. Use when asked to
-  cascade, propagate, or roll out a module change to its dependents.
-argument-hint: "[<module> <map> | abandon]"
+  Carries the release of a changed Go module through every module depending
+  on it across the modmap maps: plans the update rounds, asks which maps to
+  release, checks the repositories, tests each dependent against the local
+  code, then, on the user's go-ahead, updates, commits, tags, and pushes them
+  one by one. Use when asked to cascade, propagate, or roll out a module
+  change to its dependents.
+argument-hint: "[<module> | abandon]"
 ---
 
 # Cascade
@@ -14,9 +15,9 @@ argument-hint: "[<module> <map> | abandon]"
 ## Usage
 
 ```
-/cascade <module> <map>   start a migration of <module> limited to <map>
-/cascade                  resume the active migration
-/cascade abandon          end the active migration where it stands
+/cascade <module>   start a migration of <module> across every map
+/cascade            resume the active migration
+/cascade abandon    end the active migration where it stands
 ```
 
 Run from the modmap checkout. Every `gomake :cascade:*` command takes
@@ -33,6 +34,8 @@ Run from the modmap checkout. Every `gomake :cascade:*` command takes
 - A module marked `skip` (`modes` in `ROOT/cascade/state.json`) is never
   tested, updated, committed, or pushed; one marked `in-place` is never
   tagged.
+- Only two things mark a module: the map pick, and the user's choice for a
+  dependent failing the preflight. Never offer a mark for anything else.
 - Log every step you take outside a target: `gomake :cascade:log --dir ROOT
   -m <module> -s <step> [-v <version>] [-f "<reason>"]`.
   The `:cascade:*` targets log their own steps.
@@ -42,11 +45,17 @@ Run from the modmap checkout. Every `gomake :cascade:*` command takes
 1. `gomake --list` must show `:cascade:start`; else stop: gomake needs
    rebuilding with gmtool's targets.
 2. Write the plan to a temporary file:
-   `go run ./cmd/modmap -c modmap.yaml --plan <module> <map> > <tmp>`.
-   Show the rounds and the `excluded` modules.
-3. `gomake :cascade:start --dir ROOT <tmp>`; it fails while a migration is
+   `go run ./cmd/modmap -c modmap.yaml --plan <module> > <tmp>`. It spans
+   every map; each module names its `map`. Show the rounds and the
+   `excluded` modules, grouped by map.
+3. Ask which maps to release: any subset of the maps the rounds name, each
+   shown with its module count. Every module of a map left out is marked
+   `skip`; the changed module is always released.
+4. `gomake :cascade:start --dir ROOT <tmp>`; it fails while a migration is
    active — stop and say so: `/cascade` resumes it, `/cascade abandon` ends
    it.
+5. Unless every map was picked: `gomake :cascade:pick --dir ROOT <map>...`
+   naming the picked maps; with none picked, name no map.
 
 ## Phase 1
 
@@ -59,18 +68,22 @@ Run from the modmap checkout. Every `gomake :cascade:*` command takes
    - stop, to fix it by hand.
 
    Record a choice with `gomake :cascade:mark --dir ROOT -m <module>
-   --skip` or `--in-place`; when it refuses in place, offer skip or stop.
-   A failing changed module, or any stop, ends the run with the migration
-   active. Run the preflight again until it passes.
+   --skip` or `--in-place`, adding `--recheck` when the preflight ran with
+   it; when it refuses in place, offer skip or stop. The modules of an
+   unpicked map are not checked; the preflight lists them as `skip ...
+   (unpicked)`. A failing changed module, or any stop, ends the run with the
+   migration active. Run the preflight again until it passes.
 2. `gomake :cascade:modfiles --dir ROOT` writes, per module, a copy of its
-   `go.mod` replacing the other plan modules by their local directories.
+   `go.mod` replacing the other plan modules by their local directories,
+   but the marked ones: their dependents test against their last release.
 3. For each module of the plan not skipped, in its directory:
    `gomake :go:test --dir ROOT/cascade/tests/<m> -- -mod=mod
    -modfile=ROOT/cascade/mod/<m>/go.mod`, where `<m>` is the module path
    with `/` replaced by `_` (create the tests directory first). Leave
    `GOWORK` alone: the go commands tests run inherit it. Log `-s test`,
    with `-f` on failure.
-4. On a build or test failure:
+4. On a build or test failure, offer only a fix or a stop; never offer
+   `skip` or `in-place`:
    1. Stop and explain the failure from the output.
    2. Propose the fix one change at a time; apply only the changes the user
       accepts. Log `-s fix`.
@@ -124,11 +137,15 @@ migration. Without `ROOT/cascade/` there is nothing to resume; say so.
 
 1. `gomake --list` must show `:cascade:start`, as in Start.
 2. Read `phase` from `ROOT/cascade/state.json`.
-3. Phase 1: run Phase 1 again from step 1. Use `--recheck` on the
-   preflight only once testing began (`ROOT/cascade/run.log` has a `test`
-   line): only then may dependents carry fixes. Test every module again,
-   passed ones included: the code may have changed since.
-4. Phase 2: `gomake :cascade:progress --dir ROOT`. On `complete` go to
+3. Phase 1: show the picked maps (`unpicked` in `state.json` lists the
+   others) and offer to change the pick; on a change run
+   `gomake :cascade:pick --dir ROOT <map>...` naming every map to release.
+   Then run Phase 1 again from step 1. Use `--recheck` on the preflight only
+   once testing began (`ROOT/cascade/run.log` has a `test` line): only then
+   may dependents carry fixes. Test every module again, passed ones
+   included: the code may have changed since.
+4. Phase 2: the pick is fixed; never offer to change it.
+   `gomake :cascade:progress --dir ROOT`. On `complete` go to
    Phase 2 step 4. Otherwise run Phase 2 step 1, then continue at the module
    `next:` names, from its first step; skip `/cm` when there is nothing to
    commit. When that module's `pending` line says `release not on origin`,

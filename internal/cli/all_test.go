@@ -48,10 +48,12 @@ func crossMaps(t tester.T) string {
 
 // planMaps writes the modules of two maps and the configuration declaring
 // them. Map "ctx42" holds github.com/ctx42/testing, github.com/ctx42/a, which
-// requires github.com/customer/b, and github.com/ctx42/d, which requires
-// github.com/ctx42/testing. Map "work" holds github.com/customer/b, which
-// requires github.com/ctx42/testing. It returns the path of the configuration
-// and the directory holding the modules.
+// requires github.com/customer/b, github.com/ctx42/d, which requires
+// github.com/ctx42/testing, and github.com/ctx42/blog, which requires
+// github.com/ctx42/testing but which the map excludes. Map "work" holds
+// github.com/customer/b, which requires github.com/ctx42/testing, and
+// github.com/customer/z, which requires nothing. It returns the path of the
+// configuration and the directory holding the modules.
 func planMaps(t tester.T) (string, string) {
 	t.Helper()
 	src := t.TempDir()
@@ -67,16 +69,23 @@ func planMaps(t tester.T) (string, string) {
 		src, "ctx42", "d",
 	)
 	writeMod(t, ""+
+		"module github.com/ctx42/blog\n"+
+		"require github.com/ctx42/testing v0.1.0\n",
+		src, "ctx42", "blog",
+	)
+	writeMod(t, ""+
 		"module github.com/customer/b\n"+
 		"require github.com/ctx42/testing v0.1.0\n",
 		src, "customer", "b",
 	)
+	writeMod(t, "module github.com/customer/z\n", src, "customer", "z")
 	cnf := oskit.Create(t, ""+
 		"out: all.svg\n"+
 		"maps:\n"+
 		"  - name: ctx42\n"+
 		"    dirs: ["+filepath.Join(src, "ctx42")+"]\n"+
 		"    include: ['github.com/ctx42/*']\n"+
+		"    exclude: ['github.com/ctx42/blog']\n"+
 		"  - name: work\n"+
 		"    dirs: ["+filepath.Join(src, "customer")+"]\n"+
 		"    include: ['github.com/customer/*']\n",

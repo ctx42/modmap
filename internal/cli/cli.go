@@ -40,9 +40,9 @@ var (
 	// configuration file.
 	errPlanConf = errors.New("--plan requires -c")
 
-	// errPlanMap is returned when the plan is not limited to exactly one
-	// map.
-	errPlanMap = errors.New("--plan requires exactly one map name")
+	// errPlanMap is returned when the plan is given map names; it spans
+	// every map the configuration file declares.
+	errPlanMap = errors.New("--plan takes no map name")
 )
 
 // Plan errors.
@@ -51,9 +51,9 @@ var (
 	// scanned modules.
 	errModNotFound = errors.New("module not found")
 
-	// errModNotInMap is returned when the changed module is not kept by
-	// the map the plan is limited to.
-	errModNotInMap = errors.New("module not in the map")
+	// errModExcluded is returned when the changed module is kept out by a
+	// map finding it on disk, or no map keeping it finds it there.
+	errModExcluded = errors.New("module excluded")
 
 	// errModNotOnDisk is returned when the changed module was read from the
 	// module cache instead of a scanned directory.

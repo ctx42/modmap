@@ -78,6 +78,31 @@ func Test_abs_tabular(t *testing.T) {
 	}
 }
 
+func Test_within_tabular(t *testing.T) {
+	tt := []struct {
+		testN string
+
+		pth  string
+		root string
+		want bool
+	}{
+		{"the root itself", "/src/ctx42", "/src/ctx42", true},
+		{"directly below", "/src/ctx42/ring", "/src/ctx42", true},
+		{"deeply below", "/src/ctx42/ring/v2", "/src/ctx42", true},
+		{"filesystem root", "/src", "/", true},
+		{"sibling sharing a prefix", "/src/ctx42x/ring", "/src/ctx42", false},
+		{"parent", "/src", "/src/ctx42", false},
+		{"unrelated", "/opt/ring", "/src/ctx42", false},
+		{"relative path", "ring", "/src/ctx42", false},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.testN, func(t *testing.T) {
+			assert.Equal(t, tc.want, within(tc.pth, tc.root))
+		})
+	}
+}
+
 func Test_replaceFile(t *testing.T) {
 	t.Run("new file", func(t *testing.T) {
 		// --- Given ---

@@ -297,8 +297,7 @@ func Test_run(t *testing.T) {
 	t.Run("plan printed instead of a map", func(t *testing.T) {
 		// --- Given ---
 		cnf, _ := planMaps(t)
-		names := []string{"ctx42"}
-		cfg := &config{conf: cnf, plan: "github.com/ctx42/d", names: names}
+		cfg := &config{conf: cnf, plan: "github.com/ctx42/d"}
 		tst := ringtest.New(t).WetStdout().WetStderr()
 		rng := tst.Ring()
 
@@ -310,7 +309,7 @@ func Test_run(t *testing.T) {
 		assert.Contain(t, `"module": "github.com/ctx42/d"`, tst.Stdout())
 		assert.Len(t, 1, must.Value(os.ReadDir(filepath.Dir(cnf))))
 
-		assert.Contain(t, "graph has 4 modules", tst.Stderr())
+		assert.Contain(t, "graph has 6 modules", tst.Stderr())
 	})
 
 	t.Run("error - unknown map name", func(t *testing.T) {

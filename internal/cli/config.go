@@ -47,8 +47,8 @@ type config struct {
 	conf string
 
 	// Names of the configuration file maps to draw, as columns from left
-	// to right. An empty list draws every map the file declares. With the
-	// "--plan" option it holds the single map the plan is limited to.
+	// to right. An empty list draws every map the file declares. It stays
+	// empty with the "--plan" option, as the plan spans every map.
 	names []string
 
 	// Module path of the changed module whose update plan is printed instead
@@ -155,7 +155,7 @@ func (cfg *config) parseConf(wd string) error {
 	}
 	cfg.conf = abs(wd, cfg.conf)
 	cfg.names = cfg.fs.Args()
-	if cfg.plan != "" && len(cfg.names) != 1 {
+	if cfg.plan != "" && len(cfg.names) > 0 {
 		return errPlanMap
 	}
 	return nil
@@ -190,7 +190,7 @@ func (cfg *config) help() string {
 		"  %[1]s [options] --web <dir>\n" +
 		"  %[1]s -c <config.yaml> [map...]\n" +
 		"  %[1]s --web -c <config.yaml> [map...]\n" +
-		"  %[1]s -c <config.yaml> --plan <module> <map>\n" +
+		"  %[1]s -c <config.yaml> --plan <module>\n" +
 		"\n" +
 		"Options:\n" +
 		"%[2]s"

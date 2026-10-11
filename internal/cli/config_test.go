@@ -127,9 +127,9 @@ func Test_config_parse(t *testing.T) {
 		assert.Nil(t, cfg.roots)
 	})
 
-	t.Run("plan with a configuration and one map", func(t *testing.T) {
+	t.Run("plan with a configuration", func(t *testing.T) {
 		// --- Given ---
-		args := []string{"-c", "/m.yaml", "--plan", "example.com/a", "one"}
+		args := []string{"-c", "/m.yaml", "--plan", "example.com/a"}
 		cfg := &config{}
 
 		// --- When ---
@@ -138,7 +138,7 @@ func Test_config_parse(t *testing.T) {
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Equal(t, "example.com/a", cfg.plan)
-		assert.Equal(t, []string{"one"}, cfg.names)
+		assert.Empty(t, cfg.names)
 	})
 
 	t.Run("help skips validation", func(t *testing.T) {
@@ -210,7 +210,7 @@ func Test_config_parse(t *testing.T) {
 
 	t.Run("error - plan with web", func(t *testing.T) {
 		// --- Given ---
-		args := []string{"--web", "-c", "/m.yaml", "--plan", "a.com/a", "one"}
+		args := []string{"--web", "-c", "/m.yaml", "--plan", "a.com/a"}
 		cfg := &config{}
 
 		// --- When ---
@@ -420,8 +420,8 @@ func Test_config_parseConf_tabular(t *testing.T) {
 			errConfOnly,
 		},
 		{
-			"error - plan without a map",
-			[]string{"-c", "m.yaml", "--plan", "example.com/a"},
+			"error - plan with a map",
+			[]string{"-c", "m.yaml", "--plan", "example.com/a", "a"},
 			errPlanMap,
 		},
 		{
@@ -514,7 +514,7 @@ func Test_config_help(t *testing.T) {
 	assert.Contain(t, "modmap [options] -o <file.svg> <dir>", have)
 	assert.Contain(t, "modmap -c <config.yaml> [map...]", have)
 	assert.Contain(t, "modmap --web -c <config.yaml> [map...]", have)
-	assert.Contain(t, "modmap -c <config.yaml> --plan <module> <map>", have)
+	assert.Contain(t, "modmap -c <config.yaml> --plan <module>\n", have)
 	assert.Contain(t, "-i, --include", have)
 	assert.Contain(t, "-o, --out", have)
 }

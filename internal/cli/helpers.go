@@ -32,6 +32,16 @@ func abs(wd, pth string) string {
 	return filepath.Join(wd, pth)
 }
 
+// within reports whether the clean absolute path pth is the directory root or
+// lies below it.
+func within(pth, root string) bool {
+	rel, err := filepath.Rel(root, pth)
+	if err != nil {
+		return false
+	}
+	return rel == "." || filepath.IsLocal(rel)
+}
+
 // replaceFile writes data to the file at pth through a temporary file renamed
 // over it, so a failed write never leaves pth truncated. An existing file keeps
 // its mode, a new one is created with mode 0644. When pth is a symbolic link,
