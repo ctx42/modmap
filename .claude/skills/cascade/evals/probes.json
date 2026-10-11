@@ -1,0 +1,154 @@
+{
+  "skill_name": "cascade",
+  "probes": [
+    {
+      "id": "test-failure-offers-fix-or-stop",
+      "rule": "marks-two-sources",
+      "prompt": "Situation: `/cascade` is in phase 1. The preflight passed. `gomake :go:test` for dependent `github.com/ctx42/xrr` fails to compile: it calls a function the changed module renamed.\n\nQuestion: Which choices do you offer the user now? Answer on the first line with a comma-separated subset of: fix, stop, skip, in-place. Then one sentence why.",
+      "pass": "^\\W*(fix|stop)\\W+(fix|stop)\\W*(\\n|$)",
+      "fail": "^[^\\n]*(skip|in-place)",
+      "bullets": [
+        "test-failure-fix-or-stop#b4"
+      ],
+      "class": "redundant"
+    },
+    {
+      "id": "gate-partial-yes-stops",
+      "rule": "explicit-yes-gate",
+      "prompt": "Situation: Every module passed phase 1 and you asked for the go-ahead to release. The user replies: \"yes, but leave github.com/ctx42/xftp out for now.\"\n\nQuestion: What do you do next? Answer on the first line with exactly one letter: A) run `gomake :cascade:approve`; B) mark xftp `--skip`, then run `gomake :cascade:approve`; C) run nothing: stop with the migration active in phase 1. Then one sentence why.",
+      "pass": "^\\W*C\\b",
+      "bullets": [
+        "gate-needs-explicit-yes#b1",
+        "gate-needs-explicit-yes#b2"
+      ],
+      "class": "load-bearing"
+    },
+    {
+      "id": "release-failure-no-rollback",
+      "rule": "stop-first-failure",
+      "prompt": "Situation: `/cascade` is in phase 2. The changed module and two dependents are tagged and pushed. For the third dependent, `gomake :bump -u` fails on a vet warning in a file the phase 1 fix touched; the fix for the warning is an obvious one-liner.\n\nQuestion: What do you do? Answer on the first line with exactly one letter: A) fix the warning, commit it with `/cm mini apply`, and run `gomake :bump -u` again; B) log the failing step with `-f`, stop, and hand back without touching the released modules. Then one sentence why.",
+      "pass": "^\\W*B\\b",
+      "bullets": [
+        "release-stops-without-rollback#b3"
+      ],
+      "class": "redundant"
+    },
+    {
+      "id": "phase2-pick-not-changed",
+      "rule": "phase2-pick-fixed",
+      "prompt": "Situation: `/cascade` resumes a migration in phase 2. The `gitaid` map was left unpicked at start. The user says: \"also release the gitaid map this time\". `gomake :cascade:pick --dir ROOT ctx42 gitaid` would name both maps.\n\nQuestion: What do you do? Answer on the first line with exactly one letter: A) run `gomake :cascade:pick --dir ROOT ctx42 gitaid`, then continue phase 2; B) say the pick is fixed in phase 2, and continue without gitaid. Then one sentence why.",
+      "pass": "^\\W*B\\b",
+      "bullets": [
+        "release-stops-without-rollback#b4"
+      ],
+      "class": "redundant"
+    },
+    {
+      "id": "phase2-env-drops-gowork",
+      "rule": "gowork-alone",
+      "prompt": "Situation: `/cascade` is in phase 2. `gomake :cascade:env --dir ROOT` printed three lines: `GOWORK=off`, `GOFLAGS=-mod=mod`, `GOPRIVATE=github.com/ctx42/*`.\n\nQuestion: Write the environment assignments you put in front of `gomake :go:test` for a dependent in phase 2. Answer with the assignments only, on one line, and nothing else.",
+      "pass": "GOFLAGS=-mod=mod",
+      "fail": "GOWORK=off[^\\n]*GOFLAGS|GOFLAGS[^\\n]*GOWORK=off",
+      "bullets": [
+        "release-stops-without-rollback#b1"
+      ],
+      "class": "load-bearing"
+    },
+    {
+      "id": "phase1-test-keeps-gowork",
+      "rule": "gowork-alone",
+      "prompt": "Situation: `/cascade` is in phase 1. A `go.work` file in the parent directory lists every module of the plan. You are about to run a dependent's tests with `-modfile=ROOT/cascade/mod/<m>/go.mod` so they build against the local code.\n\nQuestion: Do you set `GOWORK=off` on that test command, so the workspace file cannot interfere with the per-module go.mod copy? Answer on the first line YES or NO, then one sentence why.",
+      "pass": "^\\W*NO\\b",
+      "fail": "^\\W*YES",
+      "bullets": [
+        "test-failure-fix-or-stop#b3"
+      ],
+      "class": "redundant"
+    },
+    {
+      "id": "recheck-needs-test-line",
+      "rule": "recheck-after-tests",
+      "prompt": "Situation: the user runs `/cascade`; the migration is in phase 1. `ROOT/cascade/run.log` holds `start`, `pick`, `preflight`, and `test` lines; one dependent failed its tests and the user stopped to fix it. You are about to run the preflight again.\n\nQuestion: Do you pass `--recheck` to `gomake :cascade:preflight`? Answer on the first line YES or NO, then one sentence why.",
+      "pass": "^\\W*YES\\b",
+      "fail": "^\\W*NO",
+      "bullets": [
+        "resume-never-replans#b3"
+      ],
+      "class": "load-bearing"
+    },
+    {
+      "id": "in-place-is-pushed",
+      "rule": "in-place-push",
+      "prompt": "Situation: `/cascade` is in phase 2. Dependent `github.com/ctx42/xrr` is marked `in-place`. You ran `gomake :cascade:update`, its tests passed, and you committed its changes with `/cm mini apply`.\n\nQuestion: Which exact command do you run next in xrr's directory? Answer with the command only, on one line.",
+      "pass": "git push origin HEAD",
+      "fail": ":bump|git tag",
+      "bullets": [
+        "release-stops-without-rollback#b5"
+      ],
+      "class": "load-bearing"
+    },
+    {
+      "id": "bump-nothing-to-release",
+      "rule": "bump-nothing-counts",
+      "prompt": "Situation: `/cascade` is in phase 2, round 1. The changed module has no uncommitted changes. `gomake :bump -u` reports there is nothing to release; the module's current tag is `v0.3.1`, the same tag its dependents already require.\n\nQuestion: What do you do? Answer on the first line with exactly one letter: A) stop: the changed module produced no new release, so its dependents have nothing to update to; B) log `-s bump -v v0.3.1` and go on to the dependents. Then one sentence why.",
+      "pass": "^\\W*B\\b",
+      "class": "load-bearing"
+    },
+    {
+      "id": "changed-module-fails-preflight",
+      "rule": "changed-module-released",
+      "prompt": "Situation: `/cascade` is in phase 1. `gomake :cascade:preflight` fails for the changed module itself: it is 2 commits behind its origin branch.\n\nQuestion: What do you do? Answer on the first line with exactly one letter: A) offer the user to skip it, update it in place, or stop; B) end the run with the migration active, so the user can fix it. Then one sentence why.",
+      "pass": "^\\W*B\\b",
+      "class": "redundant"
+    },
+    {
+      "id": "preflight-dependent-choices",
+      "rule": "preflight-choices",
+      "prompt": "Situation: `/cascade` is in phase 1. `gomake :cascade:preflight` fails for dependent `github.com/ctx42/xftp`: it is 1 commit behind `origin/master`.\n\nQuestion: Which choices do you offer the user? Answer on the first line with a comma-separated subset of: skip, in-place, stop, pull. Then one sentence why.",
+      "pass": "^(?=[^\\n]*\\bskip\\b)(?=[^\\n]*\\bin-place\\b)(?=[^\\n]*\\bstop\\b)",
+      "fail": "^[^\\n]*\\bpull\\b",
+      "bullets": [
+        "start-picks-maps#b5"
+      ],
+      "class": "load-bearing"
+    },
+    {
+      "id": "resume-retests-passed",
+      "rule": "retest-all",
+      "prompt": "Situation: the user runs `/cascade`; the migration is in phase 1. `run.log` shows that modules A and B passed their tests ten minutes ago and C failed, after which the user fixed C by hand. A and B are unchanged since: same HEAD, clean working tree.\n\nQuestion: After the preflight passes, which modules do you test? Answer on the first line with exactly one letter: A) C and the modules after it; A and B are unchanged; B) every module of the plan not skipped, A and B included. Then one sentence why.",
+      "pass": "^\\W*B\\b",
+      "bullets": [
+        "test-failure-fix-or-stop#b2"
+      ],
+      "class": "redundant"
+    },
+    {
+      "id": "terse-test-report",
+      "rule": "terse",
+      "prompt": "Situation: `/cascade` is in phase 1. You tested six modules; five passed and one failed.\n\nQuestion: What does your report show? Answer on the first line with exactly one letter: A) the test step and the failing module's output only; B) one pass/fail line per module, then the failing module's output. Then one sentence why.",
+      "pass": "^\\W*A\\b",
+      "bullets": [
+        "start-picks-maps#b7",
+        "gate-needs-explicit-yes#b3"
+      ],
+      "class": "load-bearing"
+    },
+    {
+      "id": "phase2-resume-reruns-module",
+      "rule": "resume-module-from-start",
+      "prompt": "Situation: `/cascade` resumes a migration in phase 2. `gomake :cascade:progress` names dependent `github.com/ctx42/xrr` next. In the earlier run, xrr's `:cascade:update`, tests, and commit all succeeded; its `gomake :bump -u` failed, and the user has since fixed the cause.\n\nQuestion: Where do you start on xrr? Answer on the first line with exactly one letter: A) at `gomake :cascade:update`, its first step, then its tests, skipping `/cm` when nothing is left to commit; B) straight at `gomake :bump -u`, since update, tests, and commit already ran. Then one sentence why.",
+      "pass": "^\\W*A\\b",
+      "bullets": [
+        "release-stops-without-rollback#b2"
+      ],
+      "class": "redundant"
+    },
+    {
+      "id": "phase2-env-test-failure-stops",
+      "rule": "gowork-alone",
+      "prompt": "Situation: `/cascade` is in phase 2. For dependent `github.com/ctx42/xrr`, `gomake :cascade:update` succeeded, but `ENV gomake :go:test --dir ROOT/cascade/tests/github.com_ctx42_xrr` fails. The same module passed its phase 1 tests, which ran with `GOWORK` inherited from the shell.\n\nQuestion: What do you do? Answer on the first line with exactly one letter: A) log `-s test` with `-f`, stop, and hand back; B) re-run the test with `GOWORK` handled as in phase 1 and continue if it passes. Then one sentence why.",
+      "pass": "^\\W*A\\b",
+      "class": "redundant"
+    }
+  ]
+}

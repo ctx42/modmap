@@ -1,0 +1,55 @@
+{
+  "skill_name": "cascade",
+  "evals": [
+    {
+      "id": 1,
+      "name": "start-picks-maps",
+      "skills": [
+        "cascade"
+      ],
+      "setup": "No `ROOT/cascade/` exists. `gomake --list` shows the `:cascade:*` targets. `modmap.yaml` holds two maps: `ctx42`, where six modules depend on `github.com/ctx42/testing` over three rounds, and `gitaid`, with two dependents. Every repository is on `master`, clean and in sync with origin, except dependent `github.com/ctx42/xftp`, which is 1 commit behind `origin/master`. Asked which maps to release, the user picks `ctx42` only.",
+      "query": "/cascade github.com/ctx42/testing",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "test-failure-fix-or-stop",
+      "skills": [
+        "cascade"
+      ],
+      "setup": "An active migration in phase 1; `ROOT/cascade/run.log` already has `test` lines from an earlier run, in which `github.com/ctx42/ring` passed. The preflight passes. A `go.work` in the parent directory lists every module. Dependent `github.com/ctx42/xrr` fails to compile: it calls `testing.Must`, which the changed module renamed to `testing.MustOK`. The user accepts the proposed rename.",
+      "query": "/cascade",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "gate-needs-explicit-yes",
+      "skills": [
+        "cascade"
+      ],
+      "setup": "An active migration in phase 1 in which every module has just passed its tests. Asked for the go-ahead to release, the user replies: \"yes, but leave github.com/ctx42/xftp out for now.\"",
+      "query": "/cascade",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "release-stops-without-rollback",
+      "skills": [
+        "cascade"
+      ],
+      "setup": "An active migration in phase 2. `gomake :cascade:progress` names `github.com/ctx42/xrr` next; the changed module is already released. Plan order after it: xrr (marked `in-place`), `github.com/ctx42/xftp` (marked `skip`), `github.com/ctx42/ring`. `gomake :cascade:env` prints `GOWORK=off` and `GOFLAGS=-mod=mod`. The user asks to also release the unpicked `gitaid` map. ring's `gomake :bump -u` fails.",
+      "query": "/cascade",
+      "files": []
+    },
+    {
+      "id": 5,
+      "name": "resume-never-replans",
+      "skills": [
+        "cascade"
+      ],
+      "setup": "An active migration in phase 1; `run.log` holds `start`, `pick`, `preflight`, and `mark` lines and no `test` line. Since the start, `modmap.yaml` gained `github.com/ctx42/xcfg`, a new dependent of the changed module.",
+      "query": "/cascade — and make sure the new module is included",
+      "files": []
+    }
+  ]
+}

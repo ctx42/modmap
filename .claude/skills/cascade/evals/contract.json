@@ -1,0 +1,174 @@
+{
+  "skill_name": "cascade",
+  "rules": [
+    {
+      "id": "phase1-no-release",
+      "rule": "Phase 1 never commits, tags, pushes, or edits go.mod/go.sum",
+      "must": [
+        "Never commit, tag, push, or edit a `go\\.mod`/`go\\.sum` in phase 1",
+        "Nothing has been committed or released"
+      ]
+    },
+    {
+      "id": "fix-accepted-in-plan",
+      "rule": "Code changes only as user-accepted fixes, only in plan modules, one change at a time",
+      "must": [
+        "Edit code only as a fix the user accepted, and only in modules of the plan",
+        "Propose the fix one change at a time; apply only the changes the user accepts"
+      ]
+    },
+    {
+      "id": "no-rollback",
+      "rule": "Nothing is ever rolled back, in any phase or on abandon",
+      "must": [
+        "Never roll anything back",
+        "roll nothing back",
+        "Nothing in the modules is rolled back"
+      ]
+    },
+    {
+      "id": "marks-respected",
+      "rule": "A skip module is never tested, updated, committed, or pushed; an in-place one is never tagged",
+      "must": [
+        "A module marked `skip` \\(`modes` in `ROOT/cascade/state\\.json`\\) is never tested, updated, committed, or pushed; one marked `in-place` is never tagged"
+      ]
+    },
+    {
+      "id": "marks-two-sources",
+      "rule": "Only the map pick and the preflight choice mark a module; a test failure offers fix or stop only",
+      "must": [
+        "Only two things mark a module: the map pick, and the user's choice for a dependent failing the preflight",
+        "Never offer a mark for anything else",
+        "offer only a fix or a stop; never offer `skip` or `in-place`"
+      ]
+    },
+    {
+      "id": "explicit-yes-gate",
+      "rule": "Phase 2 needs an explicit yes; anything else stops with the migration active",
+      "must": [
+        "Anything but an explicit yes stops here with the migration active"
+      ]
+    },
+    {
+      "id": "stop-first-failure",
+      "rule": "One module at a time in plan order; stop at the first failure, except a phase 1 build or test failure, which runs the fix loop",
+      "must": [
+        "One module at a time, in plan order",
+        "stop at the first failure",
+        "The one exception: a phase 1 build or test failure runs the fix loop of Phase 1 step 4"
+      ]
+    },
+    {
+      "id": "never-replan",
+      "rule": "Resume never plans again; the recorded plan holds for the whole migration",
+      "must": [
+        "Never plan again: the recorded `ROOT/cascade/plan\\.json` holds for the whole migration"
+      ]
+    },
+    {
+      "id": "gowork-alone",
+      "rule": "Tests inherit GOWORK; GOWORK=off is dropped from ENV",
+      "must": [
+        "Leave `GOWORK` alone: the go commands tests run inherit it",
+        "its `KEY=VALUE` lines but `GOWORK=off` are `ENV` below",
+        "A test failing under `ENV` stops the run like any other failure; never re-run it with `GOWORK` or `ENV` changed"
+      ]
+    },
+    {
+      "id": "phase2-pick-fixed",
+      "rule": "In phase 2 the map pick is fixed and never offered for change",
+      "must": [
+        "Phase 2: the pick is fixed; never offer to change it"
+      ]
+    },
+    {
+      "id": "changed-module-released",
+      "rule": "The changed module is always released; its preflight failure ends the run",
+      "must": [
+        "the changed module is always released",
+        "A failing changed module, or any stop, ends the run with the migration active"
+      ]
+    },
+    {
+      "id": "recheck-after-tests",
+      "rule": "--recheck only once run.log has a test line",
+      "must": [
+        "passing `--recheck` to the preflight when `ROOT/cascade/run\\.log` has a `test` line and not otherwise"
+      ]
+    },
+    {
+      "id": "retest-all",
+      "rule": "Resume tests every module again, passed ones included",
+      "must": [
+        "Test every module again, passed ones included"
+      ]
+    },
+    {
+      "id": "active-start-stops",
+      "rule": "Start failing on an active migration stops and points at resume or abandon",
+      "must": [
+        "it fails while a migration is active — stop and say so: `/cascade` resumes it, `/cascade abandon` ends it"
+      ]
+    },
+    {
+      "id": "unpushed-handback",
+      "rule": "A release not on origin stops the resume and is handed back",
+      "must": [
+        "When that module's `pending` line says `release not on origin`, stop and hand back"
+      ]
+    },
+    {
+      "id": "review-before-next",
+      "rule": "A fixed module's diff is shown and reviewed before the next module",
+      "must": [
+        "Show the module's `git diff` and wait for the user's review"
+      ]
+    },
+    {
+      "id": "in-place-push",
+      "rule": "An in-place module is pushed with git push origin HEAD, never bumped",
+      "must": [
+        "Marked `in-place`: `git push origin HEAD`; log `-s push`; never bump",
+        "Release every module of the plan not marked `skip`, applications included, pushing the `in-place` ones without a tag"
+      ]
+    },
+    {
+      "id": "bump-nothing-counts",
+      "rule": "A bump with nothing to release is a release at the current tag, for every module",
+      "must": [
+        "A `gomake :bump -u` with nothing to release counts, for every module: its current tag is the release"
+      ]
+    },
+    {
+      "id": "preflight-choices",
+      "rule": "A dependent failing preflight gets skip, in place, or stop",
+      "must": [
+        "skip it: left as it is",
+        "update it in place: updated on its branch",
+        "stop, to fix it by hand"
+      ]
+    },
+    {
+      "id": "lessons-general",
+      "rule": "Lessons are one general line naming no module of the run",
+      "must": [
+        "append a one-line rule there — general, naming no module of the run"
+      ]
+    },
+    {
+      "id": "terse",
+      "rule": "Report tersely: the step that runs, only what fails, never the modules that passed",
+      "must": [
+        "Report tersely: say which step runs, show only what fails",
+        "never list the modules that passed"
+      ]
+    },
+    {
+      "id": "resume-module-from-start",
+      "rule": "Phase 2 resume restarts the next module from its first step, update and tests included",
+      "must": [
+        "continue at the module `next:` names, from its first step even when some steps already ran"
+      ]
+    }
+  ]
+}
