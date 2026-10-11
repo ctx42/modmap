@@ -22,12 +22,15 @@ argument-hint: "[<module> | abandon]"
 
 Run from the modmap checkout. Every `gomake :cascade:*` command takes
 `--dir ~/ws/ctx42/modmap/tmp` (`ROOT` below); the active migration lives in
-`ROOT/cascade/`. Report tersely: say which step runs, show only what fails.
+`ROOT/cascade/`. Report tersely: say which step runs, show only what fails;
+never list the modules that passed.
 
 ## Rules
 
 - One module at a time, in plan order (`ROOT/cascade/plan.json`, round by
-  round); stop at the first failure.
+  round); stop at the first failure. The one exception: a phase 1 build or
+  test failure runs the fix loop of Phase 1 step 4, and the run goes on
+  once the module passes.
 - Never commit, tag, push, or edit a `go.mod`/`go.sum` in phase 1.
 - Edit code only as a fix the user accepted, and only in modules of the plan.
 - Never roll anything back.
@@ -107,25 +110,27 @@ Run from the modmap checkout. Every `gomake :cascade:*` command takes
 ## Phase 2
 
 Run every command of a module in its directory. Release every module of the
-plan not marked, applications included; stop at the first failure, roll
-nothing back, and hand back with the failing step logged `-f`.
+plan not marked `skip`, applications included, pushing the `in-place` ones
+without a tag; stop at the first failure, roll nothing back, and hand back
+with the failing step logged `-f`. A `gomake :bump -u` with nothing to
+release counts, for every module: its current tag is the release.
 
 1. Run `gomake :cascade:env --dir ROOT` once; its `KEY=VALUE` lines but
    `GOWORK=off` are `ENV` below. Leave `GOWORK` alone: the go commands tests
-   run inherit it.
+   run inherit it. A test failing under `ENV` stops the run like any other
+   failure; never re-run it with `GOWORK` or `ENV` changed.
 2. Round 1, the changed module:
    1. With uncommitted changes, stage them all (`git add -A`) and commit
       with `/cm mini apply`; log `-s commit`. Its unpushed commits stay.
    2. `gomake :bump -u`; log `-s bump -v <version>` with the version it
-      printed. A bump with nothing to release counts: its current tag is the
-      release.
+      printed.
 3. Every other module not skipped, in plan order:
    1. `gomake :cascade:update --dir ROOT -m <module>`.
    2. `ENV gomake :go:test --dir ROOT/cascade/tests/<module>`; log `-s test`.
    3. Stage everything (`git add -A`): the phase 1 fixes with `go.mod` and
       `go.sum`. Commit them as one with `/cm mini apply`; log `-s commit`.
-   4. `gomake :bump -u`; log `-s bump -v <version>`. In place instead:
-      `git push origin HEAD`; log `-s push`.
+   4. Marked `in-place`: `git push origin HEAD`; log `-s push`; never bump.
+      Otherwise: `gomake :bump -u`; log `-s bump -v <version>`.
 4. `gomake :cascade:progress --dir ROOT` must end with `complete`; else stop
    and show it. Then `gomake :cascade:finish --dir ROOT` and report each
    module with the version released.
@@ -140,16 +145,18 @@ migration. Without `ROOT/cascade/` there is nothing to resume; say so.
 3. Phase 1: show the picked maps (`unpicked` in `state.json` lists the
    others) and offer to change the pick; on a change run
    `gomake :cascade:pick --dir ROOT <map>...` naming every map to release.
-   Then run Phase 1 again from step 1. Use `--recheck` on the preflight only
-   once testing began (`ROOT/cascade/run.log` has a `test` line): only then
-   may dependents carry fixes. Test every module again, passed ones
-   included: the code may have changed since.
+   Then run Phase 1 again from step 1, passing `--recheck` to the preflight
+   when `ROOT/cascade/run.log` has a `test` line and not otherwise: only
+   once testing began may dependents carry fixes. Test every module again,
+   passed ones included: the code may have changed since.
 4. Phase 2: the pick is fixed; never offer to change it.
    `gomake :cascade:progress --dir ROOT`. On `complete` go to
    Phase 2 step 4. Otherwise run Phase 2 step 1, then continue at the module
-   `next:` names, from its first step; skip `/cm` when there is nothing to
-   commit. When that module's `pending` line says `release not on origin`,
-   stop and hand back: the release is local and needs pushing.
+   `next:` names, from its first step even when some steps already ran:
+   `:cascade:update` with nothing to update is a no-op, and its tests run
+   again. Skip `/cm` when there is nothing to commit. When that module's
+   `pending` line says `release not on origin`, stop and hand back: the
+   release is local and needs pushing.
 
 ## Abandon
 
