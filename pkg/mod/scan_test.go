@@ -123,7 +123,23 @@ func Test_Scanner_Scan(t *testing.T) {
 		assert.Equal(t, want, have["example.com/a"].Dir)
 	})
 
-	t.Run("the module found first wins", func(t *testing.T) {
+	t.Run("overlapping roots find a module once", func(t *testing.T) {
+		// --- Given ---
+		root := t.TempDir()
+		writeMod(t, "module example.com/a\n", root, "a")
+		scn := NewScanner(Filter{}, nil)
+
+		// --- When ---
+		have, err := scn.Scan(t.Context(), []string{root, root + "/a"})
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Len(t, 1, have)
+		want := filepath.Join(root, "a")
+		assert.Equal(t, want, have["example.com/a"].Dir)
+	})
+
+	t.Run("error - module path in two roots", func(t *testing.T) {
 		// --- Given ---
 		rootA := t.TempDir()
 		rootB := t.TempDir()
@@ -135,10 +151,11 @@ func Test_Scanner_Scan(t *testing.T) {
 		have, err := scn.Scan(t.Context(), []string{rootA, rootB})
 
 		// --- Then ---
-		assert.NoError(t, err)
-		assert.Len(t, 1, have)
-		want := filepath.Join(rootA, "a")
-		assert.Equal(t, want, have["example.com/a"].Dir)
+		assert.ErrorIs(t, ErrDupModule, err)
+		dirA := filepath.Join(rootA, "a")
+		dirB := filepath.Join(rootB, "dup")
+		assert.ErrorContain(t, "example.com/a: "+dirA+" and "+dirB, err)
+		assert.Nil(t, have)
 	})
 
 	t.Run("progress is reported", func(t *testing.T) {
@@ -214,7 +231,6 @@ func Test_Scanner_walk(t *testing.T) {
 		writeMod(t, "module example.com/a\n", root, "a")
 		writeMod(t, "module example.com/v\n", root, "vendor", "v")
 		writeMod(t, "module other.com/b\n", root, "b")
-		writeMod(t, "module example.com/a\n", root, "c")
 		oskit.Create(t, "", root, "a", "main.go")
 
 		var msgs []string
@@ -256,7 +272,7 @@ func Test_Scanner_walk(t *testing.T) {
 		root := t.TempDir()
 		writeMod(t, "module example.com/a\n", root, "a")
 		scn := NewScanner(Filter{}, nil)
-		known := &Module{Path: "example.com/a", Dir: "/src/a"}
+		known := &Module{Path: "example.com/a", Dir: filepath.Join(root, "a")}
 		mods := map[string]*Module{"example.com/a": known}
 
 		// --- When ---
@@ -265,6 +281,22 @@ func Test_Scanner_walk(t *testing.T) {
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Same(t, known, mods["example.com/a"])
+	})
+
+	t.Run("error - module path in two directories", func(t *testing.T) {
+		// --- Given ---
+		root := t.TempDir()
+		writeMod(t, "module example.com/a\n", root, "a")
+		writeMod(t, "module example.com/a\n", root, "b")
+		scn := NewScanner(Filter{}, nil)
+		mods := map[string]*Module{}
+
+		// --- When ---
+		err := scn.walk(t.Context(), root, mods)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrDupModule, err)
+		assert.ErrorContain(t, filepath.Join(root, "b"), err)
 	})
 
 	t.Run("error - context cancelled", func(t *testing.T) {

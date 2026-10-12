@@ -32,8 +32,10 @@ func NewScanner(flt Filter, logf func(format string, args ...any)) *Scanner {
 // ignores (names starting with "." or "_", "testdata"), "vendor" directories,
 // or module cache entries (names holding "@").
 // A root that is a symbolic link is followed, the links below it are not.
-// When more than one root holds the same module path, the first one found
-// wins. The walk stops with the context error once ctx is done.
+// Roots overlapping on a directory find its module once, but a module path
+// found in two directories returns [ErrDupModule] naming both: a copy of a
+// module must never stand in for it silently. The walk stops with the
+// context error once ctx is done.
 func (scn *Scanner) Scan(
 	ctx context.Context,
 	roots []string,
@@ -83,10 +85,14 @@ func (scn *Scanner) walk(
 		if !scn.flt.Match(mod.Path) {
 			return nil
 		}
-		if _, ok := mods[mod.Path]; ok {
-			return nil
-		}
 		mod.Dir = filepath.Dir(pth)
+		if have, ok := mods[mod.Path]; ok {
+			if have.Dir == mod.Dir {
+				return nil
+			}
+			const format = "%w: %s: %s and %s"
+			return fmt.Errorf(format, ErrDupModule, mod.Path, have.Dir, mod.Dir)
+		}
 		mods[mod.Path] = mod
 		scn.logf("found %s", mod.Path)
 		return nil

@@ -23,6 +23,10 @@ var (
 	// ErrNoModFile is returned when the go command reports no go.mod file
 	// for a module version.
 	ErrNoModFile = errors.New("no go.mod file for module version")
+
+	// ErrDupModule is returned when two directories hold go.mod files with
+	// the same module path.
+	ErrDupModule = errors.New("module path in two directories")
 )
 
 // cmpRequire orders requirements by module path then version.
