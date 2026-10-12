@@ -43,6 +43,9 @@ var (
 	// errPlanMap is returned when the plan is given map names; it spans
 	// every map the configuration file declares.
 	errPlanMap = errors.New("--plan takes no map name")
+
+	// errLagPlan is returned when the lag is asked for without a plan.
+	errLagPlan = errors.New("--lag requires --plan")
 )
 
 // Plan errors.

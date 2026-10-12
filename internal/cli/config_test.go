@@ -45,7 +45,7 @@ func Test_config_flags(t *testing.T) {
 		assert.NotNil(t, have)
 		for _, name := range []string{
 			"include", "i", "exclude", "e", "out", "o", "config", "c",
-			"web", "yes", "y", "plan", "help", "h",
+			"web", "yes", "y", "plan", "lag", "help", "h",
 		} {
 			assert.NotNil(t, cfg.fs.Lookup(name))
 		}
@@ -57,7 +57,7 @@ func Test_config_flags(t *testing.T) {
 		apply := cfg.flags()
 		must.Nil(cfg.fs.Parse([]string{
 			"-i", "a/*", "-e", "b/*", "-o", "out.svg", "-c", "m.yaml",
-			"--web", "-y", "--plan", "example.com/a", "-h",
+			"--web", "-y", "--plan", "example.com/a", "--lag", "-h",
 		}))
 
 		// --- When ---
@@ -71,6 +71,7 @@ func Test_config_flags(t *testing.T) {
 		assert.True(t, cfg.web)
 		assert.True(t, cfg.yes)
 		assert.Equal(t, "example.com/a", cfg.plan)
+		assert.True(t, cfg.lag)
 		assert.True(t, cfg.showHelp)
 	})
 }
@@ -139,6 +140,19 @@ func Test_config_parse(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "example.com/a", cfg.plan)
 		assert.Empty(t, cfg.names)
+	})
+
+	t.Run("plan with the lag", func(t *testing.T) {
+		// --- Given ---
+		args := []string{"-c", "/m.yaml", "--plan", "example.com/a", "--lag"}
+		cfg := &config{}
+
+		// --- When ---
+		err := cfg.parse(args)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.True(t, cfg.lag)
 	})
 
 	t.Run("help skips validation", func(t *testing.T) {
@@ -230,6 +244,18 @@ func Test_config_parse(t *testing.T) {
 
 		// --- Then ---
 		assert.ErrorIs(t, errPlanConf, err)
+	})
+
+	t.Run("error - lag without a plan", func(t *testing.T) {
+		// --- Given ---
+		args := []string{"-c", "/m.yaml", "--lag"}
+		cfg := &config{}
+
+		// --- When ---
+		err := cfg.parse(args)
+
+		// --- Then ---
+		assert.ErrorIs(t, errLagPlan, err)
 	})
 
 	t.Run("web option names no configured map", func(t *testing.T) {
@@ -514,7 +540,7 @@ func Test_config_help(t *testing.T) {
 	assert.Contain(t, "modmap [options] -o <file.svg> <dir>", have)
 	assert.Contain(t, "modmap -c <config.yaml> [map...]", have)
 	assert.Contain(t, "modmap --web -c <config.yaml> [map...]", have)
-	assert.Contain(t, "modmap -c <config.yaml> --plan <module>\n", have)
+	assert.Contain(t, "modmap -c <config.yaml> --plan <module> [--lag]\n", have)
 	assert.Contain(t, "-i, --include", have)
 	assert.Contain(t, "-o, --out", have)
 }

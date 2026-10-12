@@ -28,6 +28,11 @@ type plan struct {
 	// module path: the ones a map finding them keeps out, and the ones read
 	// from the module cache instead of a scanned directory.
 	Excluded []planMod `json:"excluded"`
+
+	// Lag holds, with the "--lag" option, the planned modules whose
+	// requirements on other planned modules the update lifts, sorted by
+	// module path.
+	Lag []lag `json:"lag,omitempty"`
 }
 
 // planMod represents a module of the plan.
@@ -192,6 +197,11 @@ func runPlan(
 	}
 	for _, pth := range cas.Skipped {
 		pln.Excluded = append(pln.Excluded, entry(pth))
+	}
+	if cfg.lag {
+		if pln.Lag, err = lags(ctx, mods, cas.Rounds); err != nil {
+			return err
+		}
 	}
 
 	enc := json.NewEncoder(rng.Stdout())

@@ -16,6 +16,7 @@ import (
 	"github.com/ctx42/testing/pkg/must"
 	"github.com/ctx42/testkit/pkg/iokit"
 	"github.com/ctx42/testkit/pkg/oskit"
+	"github.com/ctx42/testkit/pkg/prjkit"
 
 	"github.com/ctx42/modmap/internal/conf"
 )
@@ -511,6 +512,98 @@ func Test_runPlan(t *testing.T) {
 		assert.ErrorIs(t, errModNotOnDisk, err)
 		assert.ErrorContain(t, "on disk: example.com/c", err)
 		assert.Contain(t, "resolving example.com/c@v1.0.0", tst.Stderr())
+	})
+
+	t.Run("lag of the requirements the plan lifts", func(t *testing.T) {
+		// --- Given ---
+		src := t.TempDir()
+		prj := prjkit.New(t, oskit.MkdirAll(t, src, "ctx42", "testing"))
+		prj.CreateFileWith("module github.com/ctx42/testing\n", "go.mod")
+		prj.GitInitAddAll("v0.1.0")
+		prj.CreateFileWith("1", "file.txt")
+		prj.GitCommit("v0.2.0", "feat!: drop Old")
+		prj.Close()
+
+		writeMod(t, ""+
+			"module github.com/customer/a\n"+
+			"require github.com/ctx42/testing v0.1.0\n",
+			src, "customer", "a",
+		)
+		cnf := oskit.Create(t, ""+
+			"out: all.svg\n"+
+			"maps:\n"+
+			"  - name: ctx42\n"+
+			"    dirs: ["+filepath.Join(src, "ctx42")+"]\n"+
+			"    include: ['github.com/ctx42/*']\n"+
+			"  - name: work\n"+
+			"    dirs: ["+filepath.Join(src, "customer")+"]\n"+
+			"    include: ['github.com/customer/*']\n",
+			t.TempDir(), "modmap.yaml",
+		)
+		fil := must.Value(conf.Load(cnf))
+		cfg := &config{plan: "github.com/ctx42/testing", lag: true}
+		tst := ringtest.New(t).WetStdout().WetStderr()
+		rng := tst.Ring()
+
+		// --- When ---
+		err := runPlan(t.Context(), rng, cfg, fil)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		have := plan{}
+		must.Nil(json.Unmarshal([]byte(tst.Stdout()), &have))
+		want := []lag{
+			{
+				Path: "github.com/customer/a",
+				Requires: []lagReq{
+					{
+						Path:     "github.com/ctx42/testing",
+						Pinned:   "v0.1.0",
+						Latest:   "v0.2.0",
+						Tags:     1,
+						Commits:  1,
+						Breaking: []string{"feat!: drop Old"},
+					},
+				},
+			},
+		}
+		assert.Equal(t, want, have.Lag)
+
+		assert.Contain(t, "graph has 2 modules", tst.Stderr())
+	})
+
+	t.Run("no lag without the option", func(t *testing.T) {
+		// --- Given ---
+		cnf, _ := planMaps(t)
+		fil := must.Value(conf.Load(cnf))
+		cfg := &config{plan: "github.com/ctx42/testing"}
+		tst := ringtest.New(t).WetStdout().WetStderr()
+		rng := tst.Ring()
+
+		// --- When ---
+		err := runPlan(t.Context(), rng, cfg, fil)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.NotContain(t, `"lag"`, tst.Stdout())
+
+		assert.Contain(t, "graph has 6 modules", tst.Stderr())
+	})
+
+	t.Run("error - lag of a module outside git", func(t *testing.T) {
+		// --- Given ---
+		cnf, _ := planMaps(t)
+		fil := must.Value(conf.Load(cnf))
+		cfg := &config{plan: "github.com/ctx42/testing", lag: true}
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+
+		// --- When ---
+		err := runPlan(t.Context(), rng, cfg, fil)
+
+		// --- Then ---
+		assert.ErrorContain(t, "lag of github.com/ctx42/testing", err)
+		assert.Contain(t, "graph has 6 modules", tst.Stderr())
 	})
 
 	t.Run("error - plan cannot be written", func(t *testing.T) {

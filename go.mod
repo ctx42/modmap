@@ -3,6 +3,7 @@ module github.com/ctx42/modmap
 go 1.26.0
 
 require (
+	github.com/ctx42/gitaid v0.14.0
 	github.com/ctx42/goldkit v0.20.2
 	github.com/ctx42/ring v0.8.1
 	github.com/ctx42/testing v0.57.0
@@ -16,6 +17,8 @@ require (
 )
 
 require (
+	github.com/Masterminds/semver/v3 v3.5.0 // indirect
+	github.com/ctx42/xdef v0.9.1 // indirect
 	golang.org/x/text v0.43.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

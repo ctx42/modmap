@@ -50,6 +50,9 @@ install to look at it.
 - `--plan` prints the update rounds of a changed module across every
   map, with the map and directory of each module, as JSON for a tool to
   work through.
+- `--lag` adds to the plan how far each requirement it lifts is behind:
+  the release tags and commits in between, and the breaking ones among
+  them.
 
 ## Prerequisites
 
@@ -237,20 +240,68 @@ an excluded one is still planned, after the change.
 The changed module has to be found on disk and kept. `--plan` needs
 `-c`, takes no map name, and cannot be combined with `--web`.
 
+### How far behind
+
+An update lifts every requirement on a planned module to the code that
+module releases: the `HEAD` of its local clone, not only the changed
+module. `--lag` adds what that lifts to the plan, under `lag`:
+
+```shell
+modmap -c modmap.yaml --plan github.com/ctx42/testkit --lag
+```
+
+```json
+"lag": [
+  {
+    "path": "github.com/customer/app",
+    "requires": [
+      {
+        "path": "github.com/ctx42/ring",
+        "pinned": "v0.7.1",
+        "latest": "v0.8.1",
+        "tags": 2,
+        "commits": 63,
+        "breaking": [
+          "fix(ring)!: return the error from Run"
+        ]
+      }
+    ]
+  }
+]
+```
+
+Every planned module requiring another planned module behind `HEAD` is
+listed, sorted by module path. For each such requirement:
+
+- `pinned` is the version the dependent requires, and `latest` the
+  highest release tag of the module's major version in its clone;
+- `tags` counts the release tags above `pinned`, and `commits` the
+  commits from `pinned` to `HEAD`;
+- `breaking` lists the subjects of those commits marking a breaking
+  change: a `!` before the colon of a Conventional Commit subject, or a
+  `BREAKING CHANGE:` footer;
+- `missing` is set when the clone does not hold the revision `pinned`
+  names, a pseudo-version of a commit gone from it among them.
+
+Tags of a module below the top of its repository carry the module
+directory as a prefix, such as `sub/v1.2.0`. `--lag` needs `--plan` and
+reads only the local clones: fetch them first for an up-to-date answer.
+
 ## Configuration
 
 Command line options:
 
-| Option          | Meaning                                          |
-|-----------------|--------------------------------------------------|
-| `-o, --out`     | SVG file to write; required without `-c`/`--web` |
-| `--web`         | open the map in a browser instead of writing it  |
-| `-i, --include` | draw only modules matching the glob; repeatable  |
-| `-e, --exclude` | never draw modules matching the glob; repeatable |
-| `-c, --config`  | configuration file naming the maps to generate   |
-| `--plan`        | print the update plan of a module as JSON        |
-| `-y, --yes`     | do not ask before rendering a very wide level    |
-| `-h, --help`    | show usage                                       |
+| Option          | Meaning                                           |
+|-----------------|---------------------------------------------------|
+| `-o, --out`     | SVG file to write; required without `-c`/`--web`  |
+| `--web`         | open the map in a browser instead of writing it   |
+| `-i, --include` | draw only modules matching the glob; repeatable   |
+| `-e, --exclude` | never draw modules matching the glob; repeatable  |
+| `-c, --config`  | configuration file naming the maps to generate    |
+| `--plan`        | print the update plan of a module as JSON         |
+| `--lag`         | add to the plan how far it lifts each requirement |
+| `-y, --yes`     | do not ask before rendering a very wide level     |
+| `-h, --help`    | show usage                                        |
 
 Configuration file keys: `out` at the top level, then one entry per
 map under `maps`:

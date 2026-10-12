@@ -21,6 +21,7 @@ const (
 	usgWeb     = "open the map in a browser instead of writing it"
 	usgYes     = "do not ask for confirmation on wide levels"
 	usgPlan    = "print the update plan of the changed module as JSON"
+	usgLag     = "add to the plan how far it lifts each requirement"
 	usgHelp    = "show this help"
 )
 
@@ -54,6 +55,10 @@ type config struct {
 	// Module path of the changed module whose update plan is printed instead
 	// of drawing a map. Set by the "--plan" option.
 	plan string
+
+	// Add to the plan how far behind the code the update releases each
+	// requirement on a planned module is. Set by the "--lag" option.
+	lag bool
 
 	// Open the image in a browser instead of writing it to a file. Set
 	// by the "--web" option.
@@ -103,6 +108,7 @@ func (cfg *config) flags() func() {
 	fWeb := cfg.fs.Bool("web", false, usgWeb)
 	fYes := cfg.fs.BoolSL("yes", "y", false, usgYes)
 	fPlan := cfg.fs.String("plan", "", usgPlan)
+	fLag := cfg.fs.Bool("lag", false, usgLag)
 	fHelp := cfg.fs.BoolSL("help", "h", false, usgHelp)
 
 	return func() {
@@ -111,6 +117,7 @@ func (cfg *config) flags() func() {
 		cfg.web = *fWeb
 		cfg.yes = *fYes
 		cfg.plan = *fPlan
+		cfg.lag = *fLag
 		cfg.showHelp = *fHelp
 	}
 }
@@ -140,6 +147,9 @@ func (cfg *config) parse(args []string) error {
 	}
 	if cfg.plan != "" && cfg.conf == "" {
 		return errPlanConf
+	}
+	if cfg.lag && cfg.plan == "" {
+		return errLagPlan
 	}
 	if cfg.conf != "" {
 		return cfg.parseConf(wd)
@@ -190,7 +200,7 @@ func (cfg *config) help() string {
 		"  %[1]s [options] --web <dir>\n" +
 		"  %[1]s -c <config.yaml> [map...]\n" +
 		"  %[1]s --web -c <config.yaml> [map...]\n" +
-		"  %[1]s -c <config.yaml> --plan <module>\n" +
+		"  %[1]s -c <config.yaml> --plan <module> [--lag]\n" +
 		"\n" +
 		"Options:\n" +
 		"%[2]s"
