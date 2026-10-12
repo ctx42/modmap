@@ -6,7 +6,7 @@
       "name": "start-picks-maps",
       "expected_behavior": [
         "Checks that `gomake --list` shows `:cascade:start` before running anything else",
-        "Writes the plan with `go run ./cmd/modmap -c modmap.yaml --plan github.com/ctx42/testing` to a temporary file and shows its rounds and `excluded` modules grouped by map",
+        "Writes the plan with `go run ./cmd/modmap -c modmap.yaml --plan github.com/ctx42/testing --lag` to a temporary file and shows its rounds and `excluded` modules grouped by map, and the `lag` requirements with breaking commits or a missing pin",
         "Asks which maps to release, showing each map with its module count",
         "Runs `gomake :cascade:start --dir ROOT <tmp>`, then `gomake :cascade:pick --dir ROOT ctx42` naming only the picked map",
         "For xftp's preflight failure, shows the reason and offers exactly skip, update in place, or stop — never a `git pull`",
@@ -26,7 +26,7 @@
       "name": "test-failure-fix-or-stop",
       "expected_behavior": [
         "Runs the preflight with `--recheck`, since `run.log` has a `test` line",
-        "Tests every module of the plan not skipped, ring included, with `-mod=mod -modfile=ROOT/cascade/mod/<m>/go.mod`",
+        "Tests every module of the plan not skipped, ring included, with `gomake :cascade:run`, and reruns xrr with `-m github.com/ctx42/xrr --only` after the fix",
         "Leaves `GOWORK` alone on the test commands",
         "On xrr's failure stops, explains it from the output, and offers only a fix or a stop — never skip or in place",
         "Proposes the fix one change at a time, applies only what the user accepted, and edits only modules of the plan",
@@ -53,11 +53,11 @@
       "id": 4,
       "name": "release-stops-without-rollback",
       "expected_behavior": [
-        "Runs `gomake :cascade:env` once and leaves `GOWORK=off` out of the environment it puts before `gomake :go:test`",
-        "Continues at the module `next:` names, from its first step, skipping `/cm` when there is nothing to commit",
-        "On ring's bump failure logs `-s bump` with `-f`, stops, and hands back — no tag deleted, no commit reverted or reset",
+        "Releases with `gomake :cascade:run`, which tests with the `:cascade:env` lines but `GOWORK=off`; does not set `GOWORK` itself",
+        "Lets `:cascade:run` continue at the module `next:` names, from its first step",
+        "On ring's bump failure, which the run logs `-s bump` with `-f`, stops and hands back — no tag deleted, no commit reverted or reset",
         "Does not run `gomake :cascade:pick` and does not offer to change the pick",
-        "Pushes xrr with `git push origin HEAD` and does not tag it",
+        "xrr is pushed with `git push origin HEAD` by the run and not tagged",
         "Runs no update, test, commit, or push on xftp"
       ],
       "blind_only": [

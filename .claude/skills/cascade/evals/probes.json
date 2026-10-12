@@ -57,7 +57,7 @@
     {
       "id": "phase1-test-keeps-gowork",
       "rule": "gowork-alone",
-      "prompt": "Situation: `/cascade` is in phase 1. A `go.work` file in the parent directory lists every module of the plan. You are about to run a dependent's tests with `-modfile=ROOT/cascade/mod/<m>/go.mod` so they build against the local code.\n\nQuestion: Do you set `GOWORK=off` on that test command, so the workspace file cannot interfere with the per-module go.mod copy? Answer on the first line YES or NO, then one sentence why.",
+      "prompt": "Situation: `/cascade` is in phase 1. A `go.work` file in the parent directory lists every module of the plan. You are about to run a dependent's tests with `-modfile=ROOT/cascade/_mod/<m>/go.mod` so they build against the local code.\n\nQuestion: Do you set `GOWORK=off` on that test command, so the workspace file cannot interfere with the per-module go.mod copy? Answer on the first line YES or NO, then one sentence why.",
       "pass": "^\\W*NO\\b",
       "fail": "^\\W*YES",
       "bullets": [

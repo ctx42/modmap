@@ -129,7 +129,7 @@
       "rule": "An in-place module is pushed with git push origin HEAD, never bumped",
       "must": [
         "Marked `in-place`: `git push origin HEAD`; log `-s push`; never bump",
-        "Release every module of the plan not marked `skip`, applications included, pushing the `in-place` ones without a tag"
+        "releases every module of the plan not marked `skip`, applications included, pushing the `in-place` ones without a tag"
       ]
     },
     {
@@ -167,7 +167,47 @@
       "id": "resume-module-from-start",
       "rule": "Phase 2 resume restarts the next module from its first step, update and tests included",
       "must": [
-        "continue at the module `next:` names, from its first step even when some steps already ran"
+        "continues at the module `next:` names, from its first step even when some steps already ran"
+      ]
+    },
+    {
+      "id": "phase2-rebase",
+      "rule": "Phase 2 rebases onto a moved origin and retests; never merges, never bumps or pushes a tree behind origin",
+      "must": [
+        "Rebase, never merge: `git fetch origin` before a module's first step and",
+        "a local tag",
+        "Never bump or push a tree"
+      ]
+    },
+    {
+      "id": "release-highest-tag",
+      "rule": "Each release must be the highest version tag on origin; a higher one stops the run",
+      "must": [
+        "After each bump, the release must be the highest version tag on origin",
+        "a higher one stops the run, handed back"
+      ]
+    },
+    {
+      "id": "untestable-before-gate",
+      "rule": "Before the gate, find pseudo-version requirements and version-tied artifacts phase 1 cannot test, and settle them with the user",
+      "must": [
+        "Find what phase 1 cannot test: the modfiles replace plan modules by",
+        "Settle each with the user before the gate"
+      ]
+    },
+    {
+      "id": "flake-rerun-consent",
+      "rule": "A phase 2 test failure that passed in phase 1 is rerun unchanged only on the user's word",
+      "must": [
+        "and rerun unchanged only on the user's word"
+      ]
+    },
+    {
+      "id": "messages-at-gate",
+      "rule": "Commit messages are drafted in phase 1 and shown with the gate question, so the go-ahead covers them",
+      "must": [
+        ":cascade:messages --dir ROOT` prints with the question, so the go-ahead",
+        "report none `missing` or `invalid`"
       ]
     }
   ]

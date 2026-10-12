@@ -23,7 +23,9 @@ argument-hint: "[<module> | abandon]"
 Run from the modmap checkout. Every `gomake :cascade:*` command takes
 `--dir ~/ws/ctx42/modmap/tmp` (`ROOT` below); the active migration lives in
 `ROOT/cascade/`. Report tersely: say which step runs, show only what fails;
-never list the modules that passed.
+never list the modules that passed. Run each long test or release loop in
+the background with a heartbeat on every module or step change: the module,
+the step, its elapsed time, and the count done.
 
 ## Rules
 
@@ -48,9 +50,12 @@ never list the modules that passed.
 1. `gomake --list` must show `:cascade:start`; else stop: gomake needs
    rebuilding with gmtool's targets.
 2. Write the plan to a temporary file:
-   `go run ./cmd/modmap -c modmap.yaml --plan <module> > <tmp>`. It spans
-   every map; each module names its `map`. Show the rounds and the
-   `excluded` modules, grouped by map.
+   `go run ./cmd/modmap -c modmap.yaml --plan <module> --lag > <tmp>`. It
+   spans every map; each module names its `map`. Show the rounds and the
+   `excluded` modules, grouped by map. From `lag`, show each requirement
+   with `breaking` commits or `missing` set, grouped by required module:
+   the pinned version, `latest`, and the breaking subjects. Those are the
+   changes phase 1 will meet beyond the changed module.
 3. Ask which maps to release: any subset of the maps the rounds name, each
    shown with its module count. Every module of a map left out is marked
    `skip`; the changed module is always released.
@@ -79,29 +84,66 @@ never list the modules that passed.
 2. `gomake :cascade:modfiles --dir ROOT` writes, per module, a copy of its
    `go.mod` replacing the other plan modules by their local directories,
    but the marked ones: their dependents test against their last release.
-3. For each module of the plan not skipped, in its directory:
-   `gomake :go:test --dir ROOT/cascade/tests/<m> -- -mod=mod
-   -modfile=ROOT/cascade/mod/<m>/go.mod`, where `<m>` is the module path
-   with `/` replaced by `_` (create the tests directory first). Leave
-   `GOWORK` alone: the go commands tests run inherit it. Log `-s test`,
-   with `-f` on failure.
+3. `gomake :cascade:run --dir ROOT` tests every module of the plan not
+   skipped, in its directory, against the local code of the modules before
+   it: `gomake :go:test` with `-timeout 30m` and
+   `-modfile=ROOT/cascade/_mod/<m>/go.mod`, where `<m>` is the module path
+   with `/` replaced by `_`. It logs each `test` and stops at the first
+   failure: `STOPPED <module>: tests failed: see <log>`. Run it in the
+   background and report `gomake :cascade:status --dir ROOT` as the
+   heartbeat. Leave `GOWORK` alone: the go commands tests run inherit it.
+   Record what the user accepts for a module with `gomake :cascade:set
+   --dir ROOT -m <module>`: a test flag (`--flag=-p=1`), a variable
+   (`--env TZ=UTC`, or `--env PATH=<dir>:$PATH`), or retries (`-r 1`);
+   without `-m` it holds for every module, and it holds in both phases.
 4. On a build or test failure, offer only a fix or a stop; never offer
    `skip` or `in-place`:
    1. Stop and explain the failure from the output.
    2. Propose the fix one change at a time; apply only the changes the user
-      accepts. Log `-s fix`.
-   3. Run the module's tests again; repeat until they pass or the user stops.
+      accepts. Log `-s fix`, never with `-f`: `-f` marks the step failed.
+      When the failure comes from a plan module changing behaviour, not
+      only its API, name that module's commit; a fix that drops a test
+      accepts the behaviour change, so say so.
+   3. Run `gomake :cascade:run --dir ROOT -m <module> --only` again; repeat
+      until it passes or the user stops.
    4. Show the module's `git diff` and wait for the user's review; log
-      `-s review`, then go on to the next module.
-5. When every module passes, report the modules that carry fixes and go to
-   the gate. Nothing has been committed or released.
+      `-s review`, then go on with `gomake :cascade:run --dir ROOT -m
+      <next module>`.
+5. Find what phase 1 cannot test: the modfiles replace plan modules by
+   local directories, so released versions are never resolved.
+   - `gomake :cascade:images --dir ROOT` lists the Docker images whose
+     new tag the release needs, and the modules using each; a test or
+     config tying the image tag to the `go.mod` version fails until it is
+     published.
+   - A pin on a plan module at a pseudo-version of a commit gone from it is
+     a preflight `note` line; `:cascade:update` writes the release in its
+     place, so it needs nothing.
+   - Look for any other test or config tying a plan module's `go.mod`
+     version to an artifact, such as a `modkit.Ver` lookup.
+
+   Settle each with the user before the gate: a fix as in step 4, or an
+   image the user publishes during phase 2.
+6. When every module passes, write the commit message of every module
+   carrying uncommitted changes, the changed module included:
+   `ROOT/cascade/msg/<m>.txt`, its first line `# files:` and the files the
+   module's diff touches (`go.mod` and `go.sum` may be left out: phase 2
+   adds them), then the message `/cm mini` writes for that diff, the
+   dependency update included. `gomake :cascade:messages --dir ROOT` must
+   report none `missing` or `invalid`. A module whose only changes phase 2
+   makes needs none: it is committed as `chore(deps): update
+   dependencies`.
+7. Report the modules that carry fixes and the findings of step 5, and go
+   to the gate. Nothing has been committed or released.
 
 ## Gate
 
 1. Ask the user for the go-ahead to release; phase 2 commits, tags, and
    pushes every module of the plan not marked, and commits and pushes the
-   in-place ones without a tag. Anything but an explicit yes stops here with
-   the migration active.
+   in-place ones without a tag. Show the commit messages `gomake
+   :cascade:messages --dir ROOT` prints with the question, so the go-ahead
+   covers them; make a change the user asks for in the message file, and
+   ask again. Anything but an explicit yes stops here with the migration
+   active.
 2. On yes: `gomake :cascade:approve --dir ROOT`. It repeats the sync check,
    letting dependents carry their fixes, and moves the migration to phase 2
    only when every module passes. On failure stop and hand back the failing
@@ -109,29 +151,48 @@ never list the modules that passed.
 
 ## Phase 2
 
-Run every command of a module in its directory. Release every module of the
-plan not marked `skip`, applications included, pushing the `in-place` ones
-without a tag; stop at the first failure, roll nothing back, and hand back
-with the failing step logged `-f`. A `gomake :bump -u` with nothing to
+`gomake :cascade:run --dir ROOT` releases every module of the plan not marked
+`skip`, applications included, pushing the `in-place` ones without a tag. It
+starts at the first module not released, runs each one's steps in its
+directory, logs them, and stops at the first failure with `STOPPED <module>:
+<reason>`; roll nothing back. Run it in the background with the heartbeat of
+`gomake :cascade:status --dir ROOT`. A `gomake :bump -u` with nothing to
 release counts, for every module: its current tag is the release.
 
-1. Run `gomake :cascade:env --dir ROOT` once; its `KEY=VALUE` lines but
-   `GOWORK=off` are `ENV` below. Leave `GOWORK` alone: the go commands tests
-   run inherit it. A test failing under `ENV` stops the run like any other
-   failure; never re-run it with `GOWORK` or `ENV` changed.
-2. Round 1, the changed module:
-   1. With uncommitted changes, stage them all (`git add -A`) and commit
-      with `/cm mini apply`; log `-s commit`. Its unpushed commits stay.
-   2. `gomake :bump -u`; log `-s bump -v <version>` with the version it
-      printed.
-3. Every other module not skipped, in plan order:
-   1. `gomake :cascade:update --dir ROOT -m <module>`.
-   2. `ENV gomake :go:test --dir ROOT/cascade/tests/<module>`; log `-s test`.
-   3. Stage everything (`git add -A`): the phase 1 fixes with `go.mod` and
-      `go.sum`. Commit them as one with `/cm mini apply`; log `-s commit`.
-   4. Marked `in-place`: `git push origin HEAD`; log `-s push`; never bump.
+Rebase, never merge: `git fetch origin` before a module's first step and
+again before its bump or push; the run does both and stops with `behind
+origin`. Then `git pull --rebase` onto it and run the module again from its
+first step; a local tag on an unpushed commit stops the run instead. Never
+bump or push a tree behind origin: the bump pushes its tag even when origin
+rejects the branch.
+
+After each bump, the release must be the highest version tag on origin
+(`git ls-remote --tags origin`); a higher one stops the run, handed back
+with both versions. A bump failing at its push may have pushed the tag:
+say which refs landed. A test failing here that passed in phase 1 is shown
+and rerun unchanged only on the user's word. `:cascade:update` failing with
+`image not in the registry` changed nothing: name the image, wait for the
+user to publish it, then resume at that module.
+
+1. `gomake :cascade:run --dir ROOT`. Per module:
+   1. Unless it is the changed module, `:cascade:update`, then the tests
+      with `ENV`: `gomake :cascade:env --dir ROOT` prints the go
+      environment; its `KEY=VALUE` lines but `GOWORK=off` are `ENV` below.
+      Leave `GOWORK` alone: the go commands tests run inherit it. A test
+      failing under `ENV` stops the run like any other failure; never
+      re-run it with `GOWORK` or `ENV` changed.
+   2. Stage everything (`git add -A`): the phase 1 fixes with `go.mod` and
+      `go.sum`. Commit them as one, with the message reviewed at the gate.
+   3. Marked `in-place`: `git push origin HEAD`; log `-s push`; never bump.
       Otherwise: `gomake :bump -u`; log `-s bump -v <version>`.
-4. `gomake :cascade:progress --dir ROOT` must end with `complete`; else stop
+2. On a stop, settle the reason, then run `gomake :cascade:run --dir ROOT -m
+   <module>`:
+   - `commit message needed`, `commit message lists other files`: write or
+     fix the module's message file and show it to the user before the run;
+   - `behind origin`: rebase as above;
+   - `tests failed`: show the log; rerun only on the user's word;
+   - `image not in the registry`: wait for the user to publish it.
+3. `gomake :cascade:progress --dir ROOT` must end with `complete`; else stop
    and show it. Then `gomake :cascade:finish --dir ROOT` and report each
    module with the version released.
 
@@ -151,12 +212,12 @@ migration. Without `ROOT/cascade/` there is nothing to resume; say so.
    passed ones included: the code may have changed since.
 4. Phase 2: the pick is fixed; never offer to change it.
    `gomake :cascade:progress --dir ROOT`. On `complete` go to
-   Phase 2 step 4. Otherwise run Phase 2 step 1, then continue at the module
-   `next:` names, from its first step even when some steps already ran:
-   `:cascade:update` with nothing to update is a no-op, and its tests run
-   again. Skip `/cm` when there is nothing to commit. When that module's
-   `pending` line says `release not on origin`, stop and hand back: the
-   release is local and needs pushing.
+   Phase 2 step 3. Otherwise `gomake :cascade:run --dir ROOT`: it
+   continues at the module `next:` names, from its first step even when
+   some steps already ran: `:cascade:update` with nothing to
+   update is a no-op, its tests run again, and nothing staged commits
+   nothing. When that module's `pending` line says `release not on origin`,
+   stop and hand back: the release is local and needs pushing.
 
 ## Abandon
 
