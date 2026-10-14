@@ -26,7 +26,7 @@
       "name": "test-failure-fix-or-stop",
       "expected_behavior": [
         "Runs the preflight with `--recheck`, since `run.log` has a `test` line",
-        "Tests every module of the plan not skipped, ring included, with `gomake :cascade:run`, and reruns xrr with `-m github.com/ctx42/xrr --only` after the fix",
+        "Tests every module of the plan not skipped, ring included, with `gomake :cascade:run`, and reruns `gomake :cascade:run` after the fix, which reuses the unchanged modules",
         "Leaves `GOWORK` alone on the test commands",
         "On xrr's failure stops, explains it from the output, and offers only a fix or a stop — never skip or in place",
         "Proposes the fix one change at a time, applies only what the user accepted, and edits only modules of the plan",

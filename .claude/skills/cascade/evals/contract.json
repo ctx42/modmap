@@ -51,7 +51,7 @@
     },
     {
       "id": "stop-first-failure",
-      "rule": "One module at a time in plan order; stop at the first failure, except a phase 1 build or test failure, which runs the fix loop",
+      "rule": "One module at a time in plan order; stop at the first failure, except phase 1 build or test failures, which run the fix loop after every other module is tested",
       "must": [
         "One module at a time, in plan order",
         "stop at the first failure",
@@ -98,7 +98,7 @@
     },
     {
       "id": "retest-all",
-      "rule": "Resume tests every module again, passed ones included",
+      "rule": "Resume tests every module again, passed ones included, the run reusing only unchanged passes",
       "must": [
         "Test every module again, passed ones included"
       ]
@@ -119,9 +119,9 @@
     },
     {
       "id": "review-before-next",
-      "rule": "A fixed module's diff is shown and reviewed before the next module",
+      "rule": "Each fixed module's diff is shown and reviewed before the run goes on",
       "must": [
-        "Show the module's `git diff` and wait for the user's review"
+        "Show each fixed module's `git diff` and wait for the user's review"
       ]
     },
     {

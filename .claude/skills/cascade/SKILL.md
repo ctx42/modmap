@@ -31,8 +31,8 @@ the step, its elapsed time, and the count done.
 
 - One module at a time, in plan order (`ROOT/cascade/plan.json`, round by
   round); stop at the first failure. The one exception: a phase 1 build or
-  test failure runs the fix loop of Phase 1 step 4, and the run goes on
-  once the module passes.
+  test failure runs the fix loop of Phase 1 step 4: the run tests every
+  other module first, and goes on once the failed ones pass.
 - Never commit, tag, push, or edit a `go.mod`/`go.sum` in phase 1.
 - Edit code only as a fix the user accepted, and only in modules of the plan.
 - Never roll anything back.
@@ -86,29 +86,39 @@ the step, its elapsed time, and the count done.
    but the marked ones: their dependents test against their last release.
 3. `gomake :cascade:run --dir ROOT` tests every module of the plan not
    skipped, in its directory, against the local code of the modules before
-   it: `gomake :go:test` with `-timeout 30m` and
+   it: `go test -race -count=1` with `-timeout 30m` and
    `-modfile=ROOT/cascade/_mod/<m>/go.mod`, where `<m>` is the module path
-   with `/` replaced by `_`. It logs each `test` and stops at the first
-   failure: `STOPPED <module>: tests failed: see <log>`. Run it in the
-   background and report `gomake :cascade:status --dir ROOT` as the
+   with `/` replaced by `_`. It logs each `test`. A module whose files (but
+   `go.mod`/`go.sum`), the files of the plan modules it requires, and its
+   modfile match its last pass logs `reuse` and is not tested again. A
+   failing module does not stop the run: the modules requiring it log
+   `blocked`, the rest are tested, and the run ends with `STOPPED <first>:
+   some modules failed: <module>: tests failed: see <log>; ...`. Run it in
+   the background and report `gomake :cascade:status --dir ROOT` as the
    heartbeat. Leave `GOWORK` alone: the go commands tests run inherit it.
    Record what the user accepts for a module with `gomake :cascade:set
    --dir ROOT -m <module>`: a test flag (`--flag=-p=1`), a variable
-   (`--env TZ=UTC`, or `--env PATH=<dir>:$PATH`), or retries (`-r 1`);
-   without `-m` it holds for every module, and it holds in both phases.
-4. On a build or test failure, offer only a fix or a stop; never offer
+   (`--env TZ=UTC`, or `--env PATH=<dir>:$PATH`), or retries (`-r 1`, which
+   rerun only the failed packages); without `-m` it holds for every module,
+   and it holds in both phases. Settings are saved in `ROOT/settings.json`
+   and every later migration starts with them: list them with `gomake
+   :cascade:set --dir ROOT` before the first run and add only what is
+   missing.
+4. On build or test failures, offer only a fix or a stop; never offer
    `skip` or `in-place`:
-   1. Stop and explain the failure from the output.
+   1. Stop and explain every failure from the output, all in one report;
+      ask about all of them at once.
    2. Propose the fix one change at a time; apply only the changes the user
       accepts. Log `-s fix`, never with `-f`: `-f` marks the step failed.
       When the failure comes from a plan module changing behaviour, not
       only its API, name that module's commit; a fix that drops a test
       accepts the behaviour change, so say so.
-   3. Run `gomake :cascade:run --dir ROOT -m <module> --only` again; repeat
-      until it passes or the user stops.
-   4. Show the module's `git diff` and wait for the user's review; log
-      `-s review`, then go on with `gomake :cascade:run --dir ROOT -m
-      <next module>`.
+   3. Run `gomake :cascade:run --dir ROOT` again: it reuses the modules
+      unchanged since their pass, so it tests only the fixed, failed, and
+      blocked ones; repeat until it passes or the user stops. For one
+      module alone: `-m <module> --only`.
+   4. Show each fixed module's `git diff` and wait for the user's review;
+      log `-s review` for each.
 5. Find what phase 1 cannot test: the modfiles replace plan modules by
    local directories, so released versions are never resolved.
    - `gomake :cascade:images --dir ROOT` lists the Docker images whose
@@ -178,6 +188,9 @@ user to publish it, then resume at that module.
    1. Unless it is the changed module, `:cascade:update`, then the tests
       with `ENV`: `gomake :cascade:env --dir ROOT` prints the go
       environment; its `KEY=VALUE` lines but `GOWORK=off` are `ENV` below.
+      A module whose files and those of the plan modules it requires match
+      its phase 1 pass is only built, its tests compiled but not run: a
+      `build` step.
       Leave `GOWORK` alone: the go commands tests run inherit it. A test
       failing under `ENV` stops the run like any other failure; never
       re-run it with `GOWORK` or `ENV` changed.
@@ -209,7 +222,8 @@ migration. Without `ROOT/cascade/` there is nothing to resume; say so.
    Then run Phase 1 again from step 1, passing `--recheck` to the preflight
    when `ROOT/cascade/run.log` has a `test` line and not otherwise: only
    once testing began may dependents carry fixes. Test every module again,
-   passed ones included: the code may have changed since.
+   passed ones included: the run reuses a module only while its files and
+   modfile match its last pass, so changed code is always tested again.
 4. Phase 2: the pick is fixed; never offer to change it.
    `gomake :cascade:progress --dir ROOT`. On `complete` go to
    Phase 2 step 3. Otherwise `gomake :cascade:run --dir ROOT`: it
