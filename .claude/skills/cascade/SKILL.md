@@ -256,7 +256,10 @@ and rerun unchanged only on the user's word.
    - `modfile changed since phase one passed`: the migration needs phase 1
      again; hand back;
    - `image ...`: show the log; a failed push left the release without its
-     image: hand back;
+     image. Publish it at the release tag the way the module's repository
+     documents, log `-s image -v <version>`, and run the module again: the
+     run finds the image in the registry and goes on. Hand back when it
+     cannot be published;
    - `image not in the registry`: the image of a released module is
      missing: hand back.
 3. `gomake :cascade:progress --dir ROOT` must end with `complete`; else stop

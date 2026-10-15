@@ -1,7 +1,7 @@
 - Before the first phase 1 run, list the saved settings and record each module's CI `TZ` the list lacks (from its Jenkinsfile, both `TZ=UTC` and `TZ = "UTC"` forms) with `:cascade:set -m <module> --env TZ=...`; tests that pin time output fail without it.
 - `:cascade:set -m <module>` replaces that module's whole env list: pass every `--env` it needs in one call.
 - In phase 1 step 5, also grep every plan module for each released module's current version string (e.g. `<module>:v1.2.3` image tags in configs, compose files, tests); a test tying it to `go.mod` fails only in phase 2.
-- Raise image pins to the coming release only after phase 1 passes every module; an untested dependent still starts the pinned image.
+- Raise image pins to the coming release only after phase 1 passes every module; an untested dependent still starts the pinned image. Then raise, before the gate, every pin a test ties to `go.mod` (`modkit.Ver`, or a test parsing `go.mod` itself): grep the tests of all plan modules, released ones included, never leave one, or phase 2 fails module by module. A module phase 2 only builds still ships such a failing test.
 - Never leave uncommitted edits in a released plan module during phase 2: dependents updating to it need a clean tag checkout; park the edit until the run ends.
 - `:cascade:set -m <module>` keeps the flags and retries you do not pass; to drop them, `:cascade:set -m <module> -c` first, then set what stays.
 - Before the gate, when the changed module drops packages, grep every `excluded` dependency's required version in the module cache for imports of them: `go mod tidy` loads dependencies' tests, so phase 2 fails where phase 1 passed.
