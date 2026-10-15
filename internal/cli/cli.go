@@ -4,8 +4,8 @@
 // Package cli implements the modmap command line interface: option parsing,
 // run configuration, and the top level dispatch returning the exit code. A
 // run draws one image, holding every map it is asked for side by side, and
-// either writes it or opens it in a browser; or it prints the update plan of
-// a changed module as JSON.
+// either writes it or opens it in a browser; or it prints, as JSON, the
+// update plan of the changed modules or the modules the maps keep.
 package cli
 
 import "errors"
@@ -46,6 +46,16 @@ var (
 
 	// errLagPlan is returned when the lag is asked for without a plan.
 	errLagPlan = errors.New("--lag requires --plan")
+
+	// errModulesConf is returned when the modules are asked for without a
+	// configuration file.
+	errModulesConf = errors.New("--modules requires -c")
+
+	// errModulesOnly is returned when the modules are asked for together
+	// with a plan, a browser, or map names; they span every map.
+	errModulesOnly = errors.New(
+		"--modules cannot be used with --plan, --web, or map names",
+	)
 )
 
 // Plan errors.

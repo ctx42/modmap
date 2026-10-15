@@ -7,7 +7,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"path/filepath"
+	"slices"
 
 	"github.com/ctx42/ring/pkg/ring"
 
@@ -15,13 +17,19 @@ import (
 	"github.com/ctx42/modmap/pkg/mod"
 )
 
-// plan represents the update plan of a changed module, printed as JSON.
+// plan represents the update plan of the changed modules, printed as JSON.
 type plan struct {
-	// Module is the module path of the changed module.
-	Module string `json:"module"`
+	// Module is the module path of the changed module when there is only
+	// one, kept for the readers of a plan with a single changed module;
+	// empty for more.
+	Module string `json:"module,omitempty"`
 
-	// Rounds holds the modules to update by round. The first round holds
-	// the changed module alone, and every round is sorted by module path.
+	// Modules holds the sorted module paths of the changed modules.
+	Modules []string `json:"modules"`
+
+	// Rounds holds the modules to update by round. A changed module reaching
+	// no other changed module is in the first round, so a single changed
+	// module is alone there; every round is sorted by module path.
 	Rounds [][]planMod `json:"rounds"`
 
 	// Excluded holds the dependents the plan does not update, sorted by
@@ -139,12 +147,11 @@ func (fnds finders) owner(pth, dir string) (string, bool) {
 	return holder, false
 }
 
-// runPlan prints the update plan of the changed module to stdout as JSON.
-// The plan spans every map the configuration declares: the changed module
-// and every module depending on it, directly or through other modules. A
-// dependent is planned when the maps finding it on disk keep it, and
-// reported as excluded otherwise. The changed module itself has to be
-// planned.
+// runPlan prints the update plan of the changed modules to stdout as JSON.
+// The plan spans every map the configuration declares: the changed modules
+// and every module depending on one of them, directly or through other
+// modules. A dependent is planned when the maps finding it on disk keep it,
+// and reported as excluded otherwise. Every changed module has to be planned.
 func runPlan(
 	ctx context.Context,
 	rng *ring.Ring,
@@ -160,18 +167,22 @@ func runPlan(
 		return err
 	}
 
-	if _, ok := grp.Node(cfg.plan); !ok {
-		return fmt.Errorf("%w: %s", errModNotFound, cfg.plan)
-	}
-	dir := mods[cfg.plan].Dir
-	if dir == "" {
-		return fmt.Errorf("%w: %s", errModNotOnDisk, cfg.plan)
-	}
-	// The scan finds modules on disk only below the map directories, so
-	// one of the maps names the changed module.
-	if name, ok := fnds.owner(cfg.plan, dir); !ok {
-		const format = "%w: %s (map: %s)"
-		return fmt.Errorf(format, errModExcluded, cfg.plan, name)
+	roots := slices.Sorted(slices.Values(cfg.plan))
+	roots = slices.Compact(roots)
+	for _, root := range roots {
+		if _, ok := grp.Node(root); !ok {
+			return fmt.Errorf("%w: %s", errModNotFound, root)
+		}
+		dir := mods[root].Dir
+		if dir == "" {
+			return fmt.Errorf("%w: %s", errModNotOnDisk, root)
+		}
+		// The scan finds modules on disk only below the map directories,
+		// so one of the maps names the changed module.
+		if name, ok := fnds.owner(root, dir); !ok {
+			const format = "%w: %s (map: %s)"
+			return fmt.Errorf(format, errModExcluded, root, name)
+		}
 	}
 
 	keep := func(pth string) bool {
@@ -182,9 +193,9 @@ func runPlan(
 		name, _ := fnds.owner(pth, mods[pth].Dir)
 		return planMod{Path: pth, Map: name, Dir: mods[pth].Dir}
 	}
-	cas := grp.Cascade(cfg.plan, keep)
+	cas := grp.CascadeFrom(roots, keep)
 	pln := plan{
-		Module:   cfg.plan,
+		Modules:  roots,
 		Rounds:   make([][]planMod, 0, len(cas.Rounds)),
 		Excluded: make([]planMod, 0, len(cas.Skipped)),
 	}
@@ -198,6 +209,9 @@ func runPlan(
 	for _, pth := range cas.Skipped {
 		pln.Excluded = append(pln.Excluded, entry(pth))
 	}
+	if len(roots) == 1 {
+		pln.Module = roots[0]
+	}
 	if cfg.lag {
 		if pln.Lag, err = lags(ctx, mods, cas.Rounds); err != nil {
 			return err
@@ -208,6 +222,32 @@ func runPlan(
 	enc.SetIndent("", "  ")
 	if err = enc.Encode(pln); err != nil {
 		return fmt.Errorf("write plan: %w", err)
+	}
+	return nil
+}
+
+// runModules prints to stdout as JSON the modules on disk the maps keep, as
+// the plan names them, sorted by module path: every module a map finds in one
+// of its directories and every map finding it keeps.
+func runModules(ctx context.Context, rng *ring.Ring, fil *conf.Config) error {
+	fnds := newFinders(fil.Maps)
+	spc := combine(fil.Out, fil.Maps)
+	spc.Filter = fnds.filter()
+	mods, _, err := build(ctx, rng, logger(rng), spc)
+	if err != nil {
+		return err
+	}
+	pms := make([]planMod, 0, len(mods))
+	for _, pth := range slices.Sorted(maps.Keys(mods)) {
+		dir := mods[pth].Dir
+		if name, ok := fnds.owner(pth, dir); ok {
+			pms = append(pms, planMod{Path: pth, Map: name, Dir: dir})
+		}
+	}
+	enc := json.NewEncoder(rng.Stdout())
+	enc.SetIndent("", "  ")
+	if err = enc.Encode(pms); err != nil {
+		return fmt.Errorf("write modules: %w", err)
 	}
 	return nil
 }

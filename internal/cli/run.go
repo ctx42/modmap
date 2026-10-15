@@ -35,8 +35,11 @@ func run(ctx context.Context, rng *ring.Ring, cfg *config) error {
 	if err != nil {
 		return err
 	}
-	if cfg.plan != "" {
+	if len(cfg.plan) > 0 {
 		return runPlan(ctx, rng, cfg, fil)
+	}
+	if cfg.modules {
+		return runModules(ctx, rng, fil)
 	}
 	maps, err := fil.Select(cfg.names)
 	if err != nil {

@@ -210,7 +210,7 @@ func Test_runPlan(t *testing.T) {
 		// --- Given ---
 		cnf, src := planMaps(t)
 		fil := must.Value(conf.Load(cnf))
-		cfg := &config{plan: "github.com/ctx42/testing"}
+		cfg := &config{plan: []string{"github.com/ctx42/testing"}}
 		tst := ringtest.New(t).WetStdout().WetStderr()
 		rng := tst.Ring()
 
@@ -220,7 +220,8 @@ func Test_runPlan(t *testing.T) {
 		// --- Then ---
 		assert.NoError(t, err)
 		want := plan{
-			Module: "github.com/ctx42/testing",
+			Module:  "github.com/ctx42/testing",
+			Modules: []string{"github.com/ctx42/testing"},
 			Rounds: [][]planMod{
 				{
 					{
@@ -268,7 +269,7 @@ func Test_runPlan(t *testing.T) {
 		// --- Given ---
 		cnf, _ := planMaps(t)
 		fil := must.Value(conf.Load(cnf))
-		cfg := &config{plan: "github.com/ctx42/testing"}
+		cfg := &config{plan: []string{"github.com/ctx42/testing"}}
 		tst := ringtest.New(t).WetStdout().WetStderr()
 		rng := tst.Ring()
 		must.Nil(runPlan(t.Context(), rng, cfg, fil))
@@ -289,7 +290,7 @@ func Test_runPlan(t *testing.T) {
 		// --- Given ---
 		cnf, src := planMaps(t)
 		fil := must.Value(conf.Load(cnf))
-		cfg := &config{plan: "github.com/ctx42/a"}
+		cfg := &config{plan: []string{"github.com/ctx42/a"}}
 		tst := ringtest.New(t).WetStdout().WetStderr()
 		rng := tst.Ring()
 
@@ -307,11 +308,90 @@ func Test_runPlan(t *testing.T) {
 		}
 		want := plan{
 			Module:   "github.com/ctx42/a",
+			Modules:  []string{"github.com/ctx42/a"},
 			Rounds:   [][]planMod{{wMod}},
 			Excluded: []planMod{},
 		}
 		assert.Equal(t, want, have)
 		assert.Contain(t, `"excluded": []`, tst.Stdout())
+
+		assert.Contain(t, "graph has 6 modules", tst.Stderr())
+	})
+
+	t.Run("several changed modules", func(t *testing.T) {
+		// --- Given ---
+		cnf, src := planMaps(t)
+		fil := must.Value(conf.Load(cnf))
+		cfg := &config{
+			plan: []string{
+				"github.com/customer/z",
+				"github.com/ctx42/testing",
+				"github.com/customer/z",
+			},
+		}
+		tst := ringtest.New(t).WetStdout().WetStderr()
+		rng := tst.Ring()
+
+		// --- When ---
+		err := runPlan(t.Context(), rng, cfg, fil)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		have := plan{}
+		must.Nil(json.Unmarshal([]byte(tst.Stdout()), &have))
+		wMods := []string{"github.com/ctx42/testing", "github.com/customer/z"}
+		assert.Equal(t, wMods, have.Modules)
+		assert.Equal(t, "", have.Module)
+		wFirst := []planMod{
+			{
+				Path: "github.com/ctx42/testing",
+				Map:  "ctx42",
+				Dir:  filepath.Join(src, "ctx42", "testing"),
+			},
+			{
+				Path: "github.com/customer/z",
+				Map:  "work",
+				Dir:  filepath.Join(src, "customer", "z"),
+			},
+		}
+		assert.Equal(t, wFirst, have.Rounds[0])
+		assert.Len(t, 3, have.Rounds)
+		assert.NotContain(t, `"module"`, tst.Stdout())
+
+		assert.Contain(t, "graph has 6 modules", tst.Stderr())
+	})
+
+	t.Run("a changed module after the one it requires", func(t *testing.T) {
+		// --- Given ---
+		cnf, _ := planMaps(t)
+		fil := must.Value(conf.Load(cnf))
+		cfg := &config{
+			plan: []string{"github.com/ctx42/a", "github.com/ctx42/testing"},
+		}
+		tst := ringtest.New(t).WetStdout().WetStderr()
+		rng := tst.Ring()
+
+		// --- When ---
+		err := runPlan(t.Context(), rng, cfg, fil)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		have := plan{}
+		must.Nil(json.Unmarshal([]byte(tst.Stdout()), &have))
+		var pths [][]string
+		for _, rnd := range have.Rounds {
+			var row []string
+			for _, pm := range rnd {
+				row = append(row, pm.Path)
+			}
+			pths = append(pths, row)
+		}
+		want := [][]string{
+			{"github.com/ctx42/testing"},
+			{"github.com/ctx42/d", "github.com/customer/b"},
+			{"github.com/ctx42/a"},
+		}
+		assert.Equal(t, want, pths)
 
 		assert.Contain(t, "graph has 6 modules", tst.Stderr())
 	})
@@ -332,7 +412,7 @@ func Test_runPlan(t *testing.T) {
 			t.TempDir(), "modmap.yaml",
 		)
 		fil := must.Value(conf.Load(cnf))
-		cfg := &config{plan: "github.com/ctx42/testing"}
+		cfg := &config{plan: []string{"github.com/ctx42/testing"}}
 		tst := ringtest.New(t).WetStdout().WetStderr()
 		rng := tst.Ring()
 
@@ -374,7 +454,7 @@ func Test_runPlan(t *testing.T) {
 			"  - name: one\n"+
 			"    dirs: ["+src+"]\n", t.TempDir(), "modmap.yaml")
 		fil := must.Value(conf.Load(cnf))
-		cfg := &config{plan: "example.com/t"}
+		cfg := &config{plan: []string{"example.com/t"}}
 
 		env := proxyEnv(t, map[string]string{
 			"example.com/c": "" +
@@ -410,7 +490,7 @@ func Test_runPlan(t *testing.T) {
 			"  - name: one\n"+
 			"    dirs: ["+gone+"]\n", t.TempDir(), "modmap.yaml")
 		fil := must.Value(conf.Load(cnf))
-		cfg := &config{plan: "example.com/a"}
+		cfg := &config{plan: []string{"example.com/a"}}
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 
@@ -422,11 +502,30 @@ func Test_runPlan(t *testing.T) {
 		assert.Contain(t, "scanning "+gone, tst.Stderr())
 	})
 
+	t.Run("error - one of the changed modules not found", func(t *testing.T) {
+		// --- Given ---
+		cnf, _ := planMaps(t)
+		fil := must.Value(conf.Load(cnf))
+		cfg := &config{
+			plan: []string{"github.com/ctx42/testing", "github.com/ctx42/nope"},
+		}
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+
+		// --- When ---
+		err := runPlan(t.Context(), rng, cfg, fil)
+
+		// --- Then ---
+		assert.ErrorIs(t, errModNotFound, err)
+		assert.ErrorContain(t, "module not found: github.com/ctx42/nope", err)
+		assert.Contain(t, "graph has 6 modules", tst.Stderr())
+	})
+
 	t.Run("error - module not found", func(t *testing.T) {
 		// --- Given ---
 		cnf, _ := planMaps(t)
 		fil := must.Value(conf.Load(cnf))
-		cfg := &config{plan: "github.com/ctx42/nope"}
+		cfg := &config{plan: []string{"github.com/ctx42/nope"}}
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 
@@ -443,7 +542,7 @@ func Test_runPlan(t *testing.T) {
 		// --- Given ---
 		cnf, _ := planMaps(t)
 		fil := must.Value(conf.Load(cnf))
-		cfg := &config{plan: "github.com/ctx42/blog"}
+		cfg := &config{plan: []string{"github.com/ctx42/blog"}}
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 
@@ -473,7 +572,7 @@ func Test_runPlan(t *testing.T) {
 			"    include: ['other.com/*']\n", t.TempDir(), "modmap.yaml")
 		oskit.MkdirAll(t, src, "two")
 		fil := must.Value(conf.Load(cnf))
-		cfg := &config{plan: "other.com/b"}
+		cfg := &config{plan: []string{"other.com/b"}}
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 
@@ -497,7 +596,7 @@ func Test_runPlan(t *testing.T) {
 			"  - name: one\n"+
 			"    dirs: ["+src+"]\n", t.TempDir(), "modmap.yaml")
 		fil := must.Value(conf.Load(cnf))
-		cfg := &config{plan: "example.com/c"}
+		cfg := &config{plan: []string{"example.com/c"}}
 
 		env := proxyEnv(t, map[string]string{
 			"example.com/c": "module example.com/c\n",
@@ -541,7 +640,7 @@ func Test_runPlan(t *testing.T) {
 			t.TempDir(), "modmap.yaml",
 		)
 		fil := must.Value(conf.Load(cnf))
-		cfg := &config{plan: "github.com/ctx42/testing", lag: true}
+		cfg := &config{plan: []string{"github.com/ctx42/testing"}, lag: true}
 		tst := ringtest.New(t).WetStdout().WetStderr()
 		rng := tst.Ring()
 
@@ -576,7 +675,7 @@ func Test_runPlan(t *testing.T) {
 		// --- Given ---
 		cnf, _ := planMaps(t)
 		fil := must.Value(conf.Load(cnf))
-		cfg := &config{plan: "github.com/ctx42/testing"}
+		cfg := &config{plan: []string{"github.com/ctx42/testing"}}
 		tst := ringtest.New(t).WetStdout().WetStderr()
 		rng := tst.Ring()
 
@@ -594,7 +693,7 @@ func Test_runPlan(t *testing.T) {
 		// --- Given ---
 		cnf, _ := planMaps(t)
 		fil := must.Value(conf.Load(cnf))
-		cfg := &config{plan: "github.com/ctx42/testing", lag: true}
+		cfg := &config{plan: []string{"github.com/ctx42/testing"}, lag: true}
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 
@@ -610,7 +709,7 @@ func Test_runPlan(t *testing.T) {
 		// --- Given ---
 		cnf, _ := planMaps(t)
 		fil := must.Value(conf.Load(cnf))
-		cfg := &config{plan: "github.com/ctx42/a"}
+		cfg := &config{plan: []string{"github.com/ctx42/a"}}
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 		rng.SetStdout(iokit.ErrWriter(&bytes.Buffer{}, 0))
@@ -621,5 +720,107 @@ func Test_runPlan(t *testing.T) {
 		// --- Then ---
 		assert.ErrorContain(t, "write plan: ", err)
 		assert.Contain(t, "graph has 6 modules", tst.Stderr())
+	})
+}
+
+func Test_runModules(t *testing.T) {
+	t.Run("modules every map keeps", func(t *testing.T) {
+		// --- Given ---
+		cnf, src := planMaps(t)
+		fil := must.Value(conf.Load(cnf))
+		tst := ringtest.New(t).WetStdout().WetStderr()
+		rng := tst.Ring()
+
+		// --- When ---
+		err := runModules(t.Context(), rng, fil)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		var have []planMod
+		must.Nil(json.Unmarshal([]byte(tst.Stdout()), &have))
+		want := []planMod{
+			{
+				Path: "github.com/ctx42/a",
+				Map:  "ctx42",
+				Dir:  filepath.Join(src, "ctx42", "a"),
+			},
+			{
+				Path: "github.com/ctx42/d",
+				Map:  "ctx42",
+				Dir:  filepath.Join(src, "ctx42", "d"),
+			},
+			{
+				Path: "github.com/ctx42/testing",
+				Map:  "ctx42",
+				Dir:  filepath.Join(src, "ctx42", "testing"),
+			},
+			{
+				Path: "github.com/customer/b",
+				Map:  "work",
+				Dir:  filepath.Join(src, "customer", "b"),
+			},
+			{
+				Path: "github.com/customer/z",
+				Map:  "work",
+				Dir:  filepath.Join(src, "customer", "z"),
+			},
+		}
+		assert.Equal(t, want, have)
+
+		assert.Contain(t, "graph has 6 modules", tst.Stderr())
+	})
+
+	t.Run("a module from the module cache is left out", func(t *testing.T) {
+		// --- Given ---
+		src := t.TempDir()
+		writeMod(t, ""+
+			"module example.com/a\n"+
+			"require example.com/c v1.0.0\n", src, "a")
+		cnf := oskit.Create(t, ""+
+			"out: all.svg\n"+
+			"maps:\n"+
+			"  - name: one\n"+
+			"    dirs: ["+src+"]\n", t.TempDir(), "modmap.yaml")
+		fil := must.Value(conf.Load(cnf))
+
+		env := proxyEnv(t, map[string]string{
+			"example.com/c": "module example.com/c\n",
+		})
+		tst := ringtest.New(t, ring.WithEnv(env)).WetStdout().WetStderr()
+		rng := tst.Ring()
+
+		// --- When ---
+		err := runModules(t.Context(), rng, fil)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		var have []planMod
+		must.Nil(json.Unmarshal([]byte(tst.Stdout()), &have))
+		want := []planMod{
+			{Path: "example.com/a", Map: "one", Dir: filepath.Join(src, "a")},
+		}
+		assert.Equal(t, want, have)
+
+		assert.Contain(t, "resolving example.com/c@v1.0.0", tst.Stderr())
+	})
+
+	t.Run("error - a map directory cannot be scanned", func(t *testing.T) {
+		// --- Given ---
+		gone := filepath.Join(t.TempDir(), "gone")
+		cnf := oskit.Create(t, ""+
+			"out: all.svg\n"+
+			"maps:\n"+
+			"  - name: one\n"+
+			"    dirs: ["+gone+"]\n", t.TempDir(), "modmap.yaml")
+		fil := must.Value(conf.Load(cnf))
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+
+		// --- When ---
+		err := runModules(t.Context(), rng, fil)
+
+		// --- Then ---
+		assert.ErrorContain(t, "scan "+gone, err)
+		assert.Contain(t, "scanning "+gone, tst.Stderr())
 	})
 }

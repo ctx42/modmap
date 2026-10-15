@@ -20,7 +20,8 @@ const (
 	usgConf    = "path of the YAML configuration file"
 	usgWeb     = "open the map in a browser instead of writing it"
 	usgYes     = "do not ask for confirmation on wide levels"
-	usgPlan    = "print the update plan of the changed module as JSON"
+	usgPlan    = "print the update plan of the changed module (repeatable)"
+	usgModules = "print the modules every map keeps as JSON"
 	usgLag     = "add to the plan how far it lifts each requirement"
 	usgHelp    = "show this help"
 )
@@ -52,13 +53,18 @@ type config struct {
 	// empty with the "--plan" option, as the plan spans every map.
 	names []string
 
-	// Module path of the changed module whose update plan is printed instead
-	// of drawing a map. Set by the "--plan" option.
-	plan string
+	// Module paths of the changed modules whose update plan is printed
+	// instead of drawing a map, in the order given. Set by the repeatable
+	// "--plan" option.
+	plan []string
 
 	// Add to the plan how far behind the code the update releases each
 	// requirement on a planned module is. Set by the "--lag" option.
 	lag bool
+
+	// Print the modules every map keeps instead of drawing a map. Set by
+	// the "--modules" option.
+	modules bool
 
 	// Open the image in a browser instead of writing it to a file. Set
 	// by the "--web" option.
@@ -107,7 +113,11 @@ func (cfg *config) flags() func() {
 	fConf := cfg.fs.StringSL("config", "c", "", usgConf)
 	fWeb := cfg.fs.Bool("web", false, usgWeb)
 	fYes := cfg.fs.BoolSL("yes", "y", false, usgYes)
-	fPlan := cfg.fs.String("plan", "", usgPlan)
+	cfg.fs.Func("plan", usgPlan, func(pth string) error {
+		cfg.plan = append(cfg.plan, pth)
+		return nil
+	})
+	fModules := cfg.fs.Bool("modules", false, usgModules)
 	fLag := cfg.fs.Bool("lag", false, usgLag)
 	fHelp := cfg.fs.BoolSL("help", "h", false, usgHelp)
 
@@ -116,7 +126,7 @@ func (cfg *config) flags() func() {
 		cfg.conf = *fConf
 		cfg.web = *fWeb
 		cfg.yes = *fYes
-		cfg.plan = *fPlan
+		cfg.modules = *fModules
 		cfg.lag = *fLag
 		cfg.showHelp = *fHelp
 	}
@@ -142,14 +152,20 @@ func (cfg *config) parse(args []string) error {
 	if cfg.web && cfg.out != "" {
 		return errWebOut
 	}
-	if cfg.plan != "" && cfg.web {
+	if len(cfg.plan) > 0 && cfg.web {
 		return errPlanWeb
 	}
-	if cfg.plan != "" && cfg.conf == "" {
+	if len(cfg.plan) > 0 && cfg.conf == "" {
 		return errPlanConf
 	}
-	if cfg.lag && cfg.plan == "" {
+	if cfg.lag && len(cfg.plan) == 0 {
 		return errLagPlan
+	}
+	if cfg.modules && (len(cfg.plan) > 0 || cfg.web) {
+		return errModulesOnly
+	}
+	if cfg.modules && cfg.conf == "" {
+		return errModulesConf
 	}
 	if cfg.conf != "" {
 		return cfg.parseConf(wd)
@@ -165,8 +181,11 @@ func (cfg *config) parseConf(wd string) error {
 	}
 	cfg.conf = abs(wd, cfg.conf)
 	cfg.names = cfg.fs.Args()
-	if cfg.plan != "" && len(cfg.names) > 0 {
+	if len(cfg.plan) > 0 && len(cfg.names) > 0 {
 		return errPlanMap
+	}
+	if cfg.modules && len(cfg.names) > 0 {
+		return errModulesOnly
 	}
 	return nil
 }
@@ -200,7 +219,8 @@ func (cfg *config) help() string {
 		"  %[1]s [options] --web <dir>\n" +
 		"  %[1]s -c <config.yaml> [map...]\n" +
 		"  %[1]s --web -c <config.yaml> [map...]\n" +
-		"  %[1]s -c <config.yaml> --plan <module> [--lag]\n" +
+		"  %[1]s -c <config.yaml> --plan <module>... [--lag]\n" +
+		"  %[1]s -c <config.yaml> --modules\n" +
 		"\n" +
 		"Options:\n" +
 		"%[2]s"

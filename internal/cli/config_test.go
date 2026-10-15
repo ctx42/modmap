@@ -45,7 +45,7 @@ func Test_config_flags(t *testing.T) {
 		assert.NotNil(t, have)
 		for _, name := range []string{
 			"include", "i", "exclude", "e", "out", "o", "config", "c",
-			"web", "yes", "y", "plan", "lag", "help", "h",
+			"web", "yes", "y", "plan", "lag", "modules", "help", "h",
 		} {
 			assert.NotNil(t, cfg.fs.Lookup(name))
 		}
@@ -57,7 +57,8 @@ func Test_config_flags(t *testing.T) {
 		apply := cfg.flags()
 		must.Nil(cfg.fs.Parse([]string{
 			"-i", "a/*", "-e", "b/*", "-o", "out.svg", "-c", "m.yaml",
-			"--web", "-y", "--plan", "example.com/a", "--lag", "-h",
+			"--web", "-y", "--plan", "example.com/a", "--plan", "example.com/b",
+			"--lag", "--modules", "-h",
 		}))
 
 		// --- When ---
@@ -70,8 +71,9 @@ func Test_config_flags(t *testing.T) {
 		assert.Equal(t, "m.yaml", cfg.conf)
 		assert.True(t, cfg.web)
 		assert.True(t, cfg.yes)
-		assert.Equal(t, "example.com/a", cfg.plan)
+		assert.Equal(t, []string{"example.com/a", "example.com/b"}, cfg.plan)
 		assert.True(t, cfg.lag)
+		assert.True(t, cfg.modules)
 		assert.True(t, cfg.showHelp)
 	})
 }
@@ -138,7 +140,21 @@ func Test_config_parse(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, "example.com/a", cfg.plan)
+		assert.Equal(t, []string{"example.com/a"}, cfg.plan)
+		assert.Empty(t, cfg.names)
+	})
+
+	t.Run("modules with a configuration", func(t *testing.T) {
+		// --- Given ---
+		args := []string{"-c", "/m.yaml", "--modules"}
+		cfg := &config{}
+
+		// --- When ---
+		err := cfg.parse(args)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.True(t, cfg.modules)
 		assert.Empty(t, cfg.names)
 	})
 
@@ -244,6 +260,42 @@ func Test_config_parse(t *testing.T) {
 
 		// --- Then ---
 		assert.ErrorIs(t, errPlanConf, err)
+	})
+
+	t.Run("error - modules with a plan", func(t *testing.T) {
+		// --- Given ---
+		args := []string{"-c", "/m.yaml", "--modules", "--plan", "a.com/a"}
+		cfg := &config{}
+
+		// --- When ---
+		err := cfg.parse(args)
+
+		// --- Then ---
+		assert.ErrorIs(t, errModulesOnly, err)
+	})
+
+	t.Run("error - modules with web", func(t *testing.T) {
+		// --- Given ---
+		args := []string{"--web", "-c", "/m.yaml", "--modules"}
+		cfg := &config{}
+
+		// --- When ---
+		err := cfg.parse(args)
+
+		// --- Then ---
+		assert.ErrorIs(t, errModulesOnly, err)
+	})
+
+	t.Run("error - modules without a configuration", func(t *testing.T) {
+		// --- Given ---
+		args := []string{"--modules", "/src"}
+		cfg := &config{}
+
+		// --- When ---
+		err := cfg.parse(args)
+
+		// --- Then ---
+		assert.ErrorIs(t, errModulesConf, err)
 	})
 
 	t.Run("error - lag without a plan", func(t *testing.T) {
@@ -455,6 +507,11 @@ func Test_config_parseConf_tabular(t *testing.T) {
 			[]string{"-c", "m.yaml", "--plan", "example.com/a", "a", "b"},
 			errPlanMap,
 		},
+		{
+			"error - modules with a map",
+			[]string{"-c", "m.yaml", "--modules", "a"},
+			errModulesOnly,
+		},
 	}
 
 	for _, tc := range tt {
@@ -540,7 +597,9 @@ func Test_config_help(t *testing.T) {
 	assert.Contain(t, "modmap [options] -o <file.svg> <dir>", have)
 	assert.Contain(t, "modmap -c <config.yaml> [map...]", have)
 	assert.Contain(t, "modmap --web -c <config.yaml> [map...]", have)
-	assert.Contain(t, "modmap -c <config.yaml> --plan <module> [--lag]\n", have)
+	wPlan := "modmap -c <config.yaml> --plan <module>... [--lag]\n"
+	assert.Contain(t, wPlan, have)
+	assert.Contain(t, "modmap -c <config.yaml> --modules\n", have)
 	assert.Contain(t, "-i, --include", have)
 	assert.Contain(t, "-o, --out", have)
 }

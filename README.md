@@ -47,9 +47,11 @@ install to look at it.
   server to stop and no file to name.
 - Several maps drawn side by side in one image, one column each, with
   requirements crossing the columns lit and numbered like any other.
-- `--plan` prints the update rounds of a changed module across every
-  map, with the map and directory of each module, as JSON for a tool to
-  work through.
+- `--plan` prints the update rounds of one or more changed modules
+  across every map, with the map and directory of each module, as JSON
+  for a tool to work through.
+- `--modules` prints every module the maps keep, with its map and
+  directory, as JSON.
 - `--lag` adds to the plan how far each requirement it lifts is behind:
   the release tags and commits in between, and the breaking ones among
   them.
@@ -179,9 +181,9 @@ cannot be combined with `-c`. See
 
 ### Planning an update
 
-`--plan` prints, instead of drawing anything, the update plan of a
-changed module as JSON on stdout. The plan spans every map of the
-configuration file:
+`--plan` prints, instead of drawing anything, the update plan of the
+changed modules as JSON on stdout; repeat it to name more than one. The
+plan spans every map of the configuration file:
 
 ```shell
 modmap -c modmap.yaml --plan github.com/ctx42/testkit
@@ -190,6 +192,9 @@ modmap -c modmap.yaml --plan github.com/ctx42/testkit
 ```json
 {
   "module": "github.com/ctx42/testkit",
+  "modules": [
+    "github.com/ctx42/testkit"
+  ],
   "rounds": [
     [
       {
@@ -224,11 +229,14 @@ modmap -c modmap.yaml --plan github.com/ctx42/testkit
 }
 ```
 
-The plan holds the changed module and every module depending on it,
-directly or through other modules. The first round holds the changed
-module alone; every other module comes one round after the highest round
-module it reaches, and the modules of a round are sorted by module path.
-Each module names the map that found it on disk.
+The plan holds the changed modules and every module depending on one of
+them, directly or through other modules. `modules` lists the changed
+modules, sorted; `module` names the changed module only when there is
+one. A changed module reaching no other changed module is in the first
+round, so a single changed module is alone there; every other module
+comes one round after the highest round module it reaches, and the
+modules of a round are sorted by module path. Each module names the map
+that found it on disk.
 
 A map finds a module when one of its `dirs` holds it and its `include`
 globs keep it. A dependent is planned only when every map finding it
@@ -237,8 +245,33 @@ are listed under `excluded`, as are those read from the module cache,
 which have no `map` or `dir`. A module reaching the change only through
 an excluded one is still planned, after the change.
 
-The changed module has to be found on disk and kept. `--plan` needs
-`-c`, takes no map name, and cannot be combined with `--web`.
+Every changed module has to be found on disk and kept; a changed module
+is planned even when a map would exclude it as a dependent. `--plan`
+needs `-c`, takes no map name, and cannot be combined with `--web`.
+
+### Listing the modules
+
+`--modules` prints, instead of drawing anything, every module the maps
+keep as JSON on stdout, sorted by module path, each with the map that
+found it and its directory: the modules `--plan` can plan.
+
+```shell
+modmap -c modmap.yaml --modules
+```
+
+```json
+[
+  {
+    "path": "github.com/ctx42/ring",
+    "map": "ctx42",
+    "dir": "/src/ctx42/ring"
+  }
+]
+```
+
+Modules read from the module cache are left out. `--modules` needs
+`-c`, takes no map name, and cannot be combined with `--plan` or
+`--web`.
 
 ### How far behind
 
@@ -298,8 +331,9 @@ Command line options:
 | `-i, --include` | draw only modules matching the glob; repeatable   |
 | `-e, --exclude` | never draw modules matching the glob; repeatable  |
 | `-c, --config`  | configuration file naming the maps to generate    |
-| `--plan`        | print the update plan of a module as JSON         |
+| `--plan`        | print the update plan of a module; repeatable     |
 | `--lag`         | add to the plan how far it lifts each requirement |
+| `--modules`     | print the modules every map keeps as JSON         |
 | `-y, --yes`     | do not ask before rendering a very wide level     |
 | `-h, --help`    | show usage                                        |
 

@@ -297,7 +297,7 @@ func Test_run(t *testing.T) {
 	t.Run("plan printed instead of a map", func(t *testing.T) {
 		// --- Given ---
 		cnf, _ := planMaps(t)
-		cfg := &config{conf: cnf, plan: "github.com/ctx42/d"}
+		cfg := &config{conf: cnf, plan: []string{"github.com/ctx42/d"}}
 		tst := ringtest.New(t).WetStdout().WetStderr()
 		rng := tst.Ring()
 
@@ -307,6 +307,24 @@ func Test_run(t *testing.T) {
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Contain(t, `"module": "github.com/ctx42/d"`, tst.Stdout())
+		assert.Len(t, 1, must.Value(os.ReadDir(filepath.Dir(cnf))))
+
+		assert.Contain(t, "graph has 6 modules", tst.Stderr())
+	})
+
+	t.Run("modules printed instead of a map", func(t *testing.T) {
+		// --- Given ---
+		cnf, _ := planMaps(t)
+		cfg := &config{conf: cnf, modules: true}
+		tst := ringtest.New(t).WetStdout().WetStderr()
+		rng := tst.Ring()
+
+		// --- When ---
+		err := run(t.Context(), rng, cfg)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Contain(t, `"path": "github.com/customer/z"`, tst.Stdout())
 		assert.Len(t, 1, must.Value(os.ReadDir(filepath.Dir(cnf))))
 
 		assert.Contain(t, "graph has 6 modules", tst.Stderr())
