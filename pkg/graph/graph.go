@@ -116,19 +116,53 @@ func (grp *Graph) Order(pth string) map[string]int {
 // keep rejects still comes after it. A nil keep keeps every dependent. It
 // returns nil when the graph has no such module.
 func (grp *Graph) Cascade(pth string, keep func(pth string) bool) *Cascade {
-	nod, ok := grp.nodes[pth]
-	if !ok {
+	return grp.CascadeFrom([]string{pth}, keep)
+}
+
+// CascadeFrom returns the update rounds of the modules which have to change
+// when the modules at pths change, as [Graph.Cascade] does for one: the
+// changed modules and every dependent of theirs keep accepts. A changed module
+// is always kept, also when it depends on another one, and comes after every
+// changed module it reaches, so a changed module reaching none is in the first
+// round. It returns nil when pths is empty or names a module the graph does
+// not have.
+func (grp *Graph) CascadeFrom(
+	pths []string,
+	keep func(pth string) bool,
+) *Cascade {
+
+	if len(pths) == 0 {
 		return nil
 	}
-	cas := &Cascade{}
-	set := map[string]bool{pth: true}
-	for _, dep := range nod.Dependents {
-		if keep == nil || keep(dep) {
-			set[dep] = true
-			continue
+	set := make(map[string]bool, len(pths))
+	for _, pth := range pths {
+		if _, ok := grp.nodes[pth]; !ok {
+			return nil
 		}
-		cas.Skipped = append(cas.Skipped, dep)
+		set[pth] = true
 	}
+	skipped := make(map[string]bool)
+	for _, pth := range pths {
+		for _, dep := range grp.nodes[pth].Dependents {
+			switch {
+			case set[dep]:
+				continue
+
+			case keep == nil || keep(dep):
+				set[dep] = true
+
+			default:
+				skipped[dep] = true
+			}
+		}
+	}
+	cas := &Cascade{}
+	for dep := range skipped {
+		if !set[dep] {
+			cas.Skipped = append(cas.Skipped, dep)
+		}
+	}
+	slices.Sort(cas.Skipped)
 
 	// A module waits for every module of the set it reaches.
 	waits := make(map[string][]string, len(set))

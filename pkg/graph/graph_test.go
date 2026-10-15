@@ -473,6 +473,122 @@ func Test_Graph_Cascade(t *testing.T) {
 	})
 }
 
+func Test_Graph_CascadeFrom(t *testing.T) {
+	keepAll := func(string) bool { return true }
+	skipW := func(pth string) bool { return pth != "w" }
+
+	t.Run("unrelated changed modules share round one", func(t *testing.T) {
+		// --- Given ---
+		mods := newMods(map[string][]string{
+			"a": {"x"},
+			"b": {"y"},
+			"x": nil,
+			"y": nil,
+		})
+		grp := must.Value(New(mods))
+
+		// --- When ---
+		have := grp.CascadeFrom([]string{"y", "x"}, keepAll)
+
+		// --- Then ---
+		want := &Cascade{Rounds: [][]string{{"x", "y"}, {"a", "b"}}}
+		assert.Equal(t, want, have)
+	})
+
+	t.Run("a changed module after the one it reaches", func(t *testing.T) {
+		// --- Given ---
+		mods := newMods(map[string][]string{
+			"a": {"b"},
+			"b": {"c"},
+			"c": nil,
+		})
+		grp := must.Value(New(mods))
+
+		// --- When ---
+		have := grp.CascadeFrom([]string{"b", "c"}, keepAll)
+
+		// --- Then ---
+		want := &Cascade{Rounds: [][]string{{"c"}, {"b"}, {"a"}}}
+		assert.Equal(t, want, have)
+	})
+
+	t.Run("a changed module keep rejects is kept", func(t *testing.T) {
+		// --- Given ---
+		mods := newMods(map[string][]string{
+			"a": {"w"},
+			"w": {"t"},
+			"t": nil,
+		})
+		grp := must.Value(New(mods))
+
+		// --- When ---
+		have := grp.CascadeFrom([]string{"t", "w"}, skipW)
+
+		// --- Then ---
+		want := &Cascade{Rounds: [][]string{{"t"}, {"w"}, {"a"}}}
+		assert.Equal(t, want, have)
+	})
+
+	t.Run("a dependent of two changed modules skipped", func(t *testing.T) {
+		// --- Given ---
+		mods := newMods(map[string][]string{
+			"w": {"x", "y"},
+			"x": nil,
+			"y": nil,
+		})
+		grp := must.Value(New(mods))
+
+		// --- When ---
+		have := grp.CascadeFrom([]string{"x", "y"}, skipW)
+
+		// --- Then ---
+		want := &Cascade{
+			Rounds:  [][]string{{"x", "y"}},
+			Skipped: []string{"w"},
+		}
+		assert.Equal(t, want, have)
+	})
+
+	t.Run("a single module matches Cascade", func(t *testing.T) {
+		// --- Given ---
+		deps := loadDeps(t, "testdata/ctx42_modules.json")
+		grp := must.Value(New(newMods(deps)))
+
+		// --- When ---
+		have := make(map[string]*Cascade, grp.Len())
+		for _, pth := range grp.paths() {
+			have[pth] = grp.CascadeFrom([]string{pth}, keepAll)
+		}
+
+		// --- Then ---
+		for pth, cas := range have {
+			assert.Equal(t, grp.Cascade(pth, keepAll), cas)
+		}
+	})
+
+	t.Run("no modules", func(t *testing.T) {
+		// --- Given ---
+		grp := must.Value(New(newMods(map[string][]string{"a": nil})))
+
+		// --- When ---
+		have := grp.CascadeFrom(nil, keepAll)
+
+		// --- Then ---
+		assert.Nil(t, have)
+	})
+
+	t.Run("a module not in the graph", func(t *testing.T) {
+		// --- Given ---
+		grp := must.Value(New(newMods(map[string][]string{"a": nil})))
+
+		// --- When ---
+		have := grp.CascadeFrom([]string{"a", "b"}, keepAll)
+
+		// --- Then ---
+		assert.Nil(t, have)
+	})
+}
+
 func Test_Graph_Widest(t *testing.T) {
 	t.Run("the busiest level counts", func(t *testing.T) {
 		// --- Given ---
