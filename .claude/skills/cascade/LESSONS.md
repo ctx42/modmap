@@ -5,3 +5,4 @@
 - Never leave uncommitted edits in a released plan module during phase 2: dependents updating to it need a clean tag checkout; park the edit until the run ends.
 - `:cascade:set -m <module>` keeps the flags and retries you do not pass; to drop them, `:cascade:set -m <module> -c` first, then set what stays.
 - Before the gate, when the changed module drops packages, grep every `excluded` dependency's required version in the module cache for imports of them: `go mod tidy` loads dependencies' tests, so phase 2 fails where phase 1 passed.
+- Run every `gomake :cascade:*` target with `GOPRIVATE` naming the private module hosts (`GOPRIVATE=bitbucket.org/vrinf`) unless `go env GOPRIVATE` already does: the lift and phase 2 resolve private modules outside the session, which `goEnv` does not exempt from the checksum database.

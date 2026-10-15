@@ -1,7 +1,7 @@
 github.com/Masterminds/semver/v3 v3.5.0 h1:kQceYJfbupGfZOKZQg0kou0DgAKhzDg2NZPAwZ/2OOE=
 github.com/Masterminds/semver/v3 v3.5.0/go.mod h1:4V+yj/TJE1HU9XfppCwVMZq3I84lprf4nC11bSS5beM=
-github.com/ctx42/gitaid v0.14.0 h1:7BXCxKaAJSavznQ0lUzK9L+WMCZCTXPpoiWGicI8d+I=
-github.com/ctx42/gitaid v0.14.0/go.mod h1:T7djFkxGdlVd/waf9UecQQ8CBIOovwd4TyzZpIawmog=
+github.com/ctx42/gitaid v0.18.0 h1:4jhAdrkjawQM916xAWtP79aKIpYk/0NM/iK5bl+j4+s=
+github.com/ctx42/gitaid v0.18.0/go.mod h1:T7djFkxGdlVd/waf9UecQQ8CBIOovwd4TyzZpIawmog=
 github.com/ctx42/goldkit v0.20.2 h1:FKvYcGR8sY2E35oGcKJTcoqzUjk2pNVmrx564i+J3gc=
 github.com/ctx42/goldkit v0.20.2/go.mod h1:rfzTlup2LCwzEAi7KOf826PuZR2mCiHFYRxFNq63ayM=
 github.com/ctx42/ring v0.8.1 h1:hGcj9uJdbxX1xvcVrcxJ5vrI0tEWRf7loejzVBNIsLg=
