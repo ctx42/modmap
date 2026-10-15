@@ -79,7 +79,9 @@ time, and the count done.
 1. `gomake :cascade:roots --dir ROOT` fetches every module and prints the
    changed ones (`root` lines) with why: uncommitted changes, commits not on
    origin, commits on origin after the latest release, or a requirement
-   older than a session module's latest release. `no roots`: offer `/cascade
+   older than the latest release of a session module, or of another major
+   version tagged in its repository (a `/v2` pin beside a `/v3` clone); it
+   never crosses a major version. `no roots`: offer `/cascade
    close`, and stop.
 2. Write the plan to a temporary file: `go run ./cmd/modmap -c modmap.yaml
    --plan <root> [--plan <root>...] --lag > <tmp>`, naming every root. It
