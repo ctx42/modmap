@@ -5,10 +5,10 @@
       "id": 1,
       "name": "start-picks-maps",
       "expected_behavior": [
-        "Checks that `gomake --list` shows `:cascade:start` before running anything else",
+        "Runs `gomake :cascade:roots --dir ROOT` to find the changed modules before planning",
         "Writes the plan with `go run ./cmd/modmap -c modmap.yaml --plan github.com/ctx42/testing --lag` to a temporary file and shows its rounds and `excluded` modules grouped by map, and the `lag` requirements with breaking commits or a missing pin",
         "Asks which maps to release, showing each map with its module count",
-        "Runs `gomake :cascade:start --dir ROOT <tmp>`, then `gomake :cascade:pick --dir ROOT ctx42` naming only the picked map",
+        "Runs `gomake :cascade:start --dir ROOT <tmp>`, then `gomake :cascade:pick --dir ROOT ctx42` naming only the picked map, then `gomake :cascade:sync --dir ROOT`",
         "For xftp's preflight failure, shows the reason and offers exactly skip, update in place, or stop — never a `git pull`",
         "Commits, tags, and pushes nothing, and edits no `go.mod` or `go.sum`",
         "Reports tersely: names each step as it runs and shows output only for what fails"

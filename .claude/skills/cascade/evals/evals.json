@@ -7,8 +7,8 @@
       "skills": [
         "cascade"
       ],
-      "setup": "No `ROOT/cascade/` exists. `gomake --list` shows the `:cascade:*` targets. `modmap.yaml` holds two maps: `ctx42`, where six modules depend on `github.com/ctx42/testing` over three rounds, and `gitaid`, with two dependents. Every repository is on `master`, clean and in sync with origin, except dependent `github.com/ctx42/xftp`, which is 1 commit behind `origin/master`. Asked which maps to release, the user picks `ctx42` only.",
-      "query": "/cascade github.com/ctx42/testing",
+      "setup": "A checked session is open in `ROOT/session/`; no `ROOT/cascade/` exists. `gomake --list` shows the `:cascade:*` targets. `gomake :cascade:roots` prints one root, `github.com/ctx42/testing`, with uncommitted changes. `modmap.yaml` holds two maps: `ctx42`, where six modules depend on `github.com/ctx42/testing` over three rounds, and `gitaid`, with two dependents. Every repository is on `master`, clean and in sync with origin, except dependent `github.com/ctx42/xftp`, which is 1 commit behind `origin/master`. Asked which maps to release, the user picks `ctx42` only.",
+      "query": "/cascade",
       "files": []
     },
     {

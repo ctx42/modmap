@@ -35,9 +35,9 @@
     },
     {
       "id": "marks-two-sources",
-      "rule": "Only the map pick and the preflight choice mark a module; a test failure offers fix or stop only",
+      "rule": "Only the map pick, an ignore setting, the own-branch choice, and the preflight choice mark a module; a test failure offers fix or stop only",
       "must": [
-        "Only two things mark a module: the map pick, and the user's choice for a dependent failing the preflight",
+        "Only four things mark a module: the map pick, an ignore setting, the user's choice for a module on its own branch, and the user's choice for a dependent failing the preflight",
         "Never offer a mark for anything else",
         "offer only a fix or a stop; never offer `skip` or `in-place`"
       ]
@@ -82,10 +82,10 @@
       ]
     },
     {
-      "id": "changed-module-released",
-      "rule": "The changed module is always released; its preflight failure ends the run",
+      "id": "unpicked-changes-wait",
+      "rule": "Changed modules of unpicked maps wait in the session; a failing changed module's preflight ends the run",
       "must": [
-        "the changed module is always released",
+        "The changes of the others wait in the session for a later cascade",
         "A failing changed module, or any stop, ends the run with the migration active"
       ]
     },
@@ -208,6 +208,36 @@
       "must": [
         ":cascade:messages --dir ROOT` prints with the question, so the go-ahead",
         "report none `missing` or `invalid`"
+      ]
+    },
+    {
+      "id": "open-before-changes",
+      "rule": "A session checks every repository before changes and never fixes a failing one itself",
+      "must": [
+        "`gomake :cascade:open --dir ROOT <tmp>`",
+        "never fix a repository yourself"
+      ]
+    },
+    {
+      "id": "own-branch-at-plan-time",
+      "rule": "A module on its own branch is settled with the user at plan time, before anything is tested",
+      "must": [
+        "ask the user now, before anything is tested: skip it, update it in place, or stop"
+      ]
+    },
+    {
+      "id": "pick-refusal",
+      "rule": "A pick leaving out roots a picked root requires is refused; the user adds their maps or stops",
+      "must": [
+        "`picked changes need changes of unpicked maps:`",
+        "ask for a pick adding their maps, or a stop"
+      ]
+    },
+    {
+      "id": "sync-conflict-users",
+      "rule": "A sync conflict stops the cascade and is left for the user to resolve",
+      "must": [
+        "the conflict is the user's to resolve"
       ]
     }
   ]
