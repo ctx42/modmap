@@ -1,3 +1,18 @@
+## v0.5.0 (Thu, 15 Oct 2026 14:58:50 UTC)
+- feat!: plan a module update across every map.
+- fix(cascade): settle what the skill left open.
+- test(cascade): add evals for the cascade skill.
+- fix(mod)!: reject a module path found in two directories.
+- feat(cli): add --lag to show what a plan lifts.
+- feat(cascade): drive the skill with the gmtool runner targets.
+- docs(cascade): follow the runner that reuses passes and collects failures.
+- docs(cascade): add lessons on settings and dropped packages.
+- feat(graph): plan an update from several changed modules.
+- feat(cli): plan several changed modules and list the modules.
+- feat(cascade)!: cascade the changes of a session.
+- docs(cascade): count pins on another major version as roots.
+- docs(cascade): run the targets with GOPRIVATE set.
+
 ## v0.4.2 (Sat, 10 Oct 2026 19:36:09 UTC)
 - chore: drop GOWORK=off from the cascade release test env.
 
