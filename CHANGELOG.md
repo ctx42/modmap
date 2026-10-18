@@ -1,3 +1,7 @@
+## v0.5.2 (Sun, 18 Oct 2026 08:24:32 UTC)
+- ci: set C42_CC_RUN_ID in the workflow environment.
+- chore(deps): update dependencies.
+
 ## v0.5.1 (Thu, 15 Oct 2026 18:09:49 UTC)
 - docs(cascade): publish a failed image by hand and resume.
 
