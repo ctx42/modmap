@@ -6,3 +6,4 @@
 - `:cascade:set -m <module>` keeps the flags and retries you do not pass; to drop them, `:cascade:set -m <module> -c` first, then set what stays.
 - Before the gate, when the changed module drops packages, grep every `excluded` dependency's required version in the module cache for imports of them: `go mod tidy` loads dependencies' tests, so phase 2 fails where phase 1 passed.
 - Run every `gomake :cascade:*` target with `GOPRIVATE` naming the private module hosts (`GOPRIVATE=bitbucket.org/vrinf`) unless `go env GOPRIVATE` already does: the lift and phase 2 resolve private modules outside the session, which `goEnv` does not exempt from the checksum database.
+- In phase 1 step 5, also grep every plan module for each released module's bare current version (`=vX.Y.Z`, `"vX.Y.Z"`): config pins such as `KEY=vX.Y.Z` name no module, and a test tying them to `go.mod` fails only in CI after the release.
