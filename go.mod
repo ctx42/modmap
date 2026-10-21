@@ -3,7 +3,7 @@ module github.com/ctx42/modmap
 go 1.26.0
 
 require (
-	github.com/ctx42/gitaid v0.18.1
+	github.com/ctx42/gitaid v0.20.0
 	github.com/ctx42/goldkit v0.20.3
 	github.com/ctx42/ring v0.8.2
 	github.com/ctx42/testing v0.57.1
