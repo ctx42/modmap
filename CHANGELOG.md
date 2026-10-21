@@ -1,3 +1,7 @@
+## v0.5.3 (Wed, 21 Oct 2026 21:29:11 UTC)
+- docs(cascade): grep plan modules for pinned release versions.
+- chore(deps): update dependencies.
+
 ## v0.5.2 (Sun, 18 Oct 2026 08:24:32 UTC)
 - ci: set C42_CC_RUN_ID in the workflow environment.
 - chore(deps): update dependencies.
