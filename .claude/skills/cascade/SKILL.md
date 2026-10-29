@@ -58,6 +58,26 @@ time, and the count done.
   -m <module> -s <step> [-v <version>] [-f "<reason>"]`.
   The `:cascade:*` targets log their own steps.
 
+## Commits in an open session
+
+A change the user asks for in a module, outside phase 2, is committed by
+these rules, which override the user's global no-commit rule:
+
+- Only `go.mod`/`go.sum` and the `Jenkinsfile` changed, and every check
+  passes (build, vet, tests, stable `go mod tidy`) with no exception: commit,
+  push, and release a patch (`gomake :bump -s <v> -u`) without asking. Reuse
+  the repository's earlier message for such commits.
+- No release needed (CI files, docs only): commit and push without asking.
+- Build or code changes (`Dockerfile`, `project.conf`, `gomake.yaml`,
+  `makefile.go`, Go code): show the drafted messages and a proposed version as
+  one question with a few choices; commit with `/cm apply` and run
+  `gomake :bump -s <v> -u` only after the user approves both.
+- Test-only change: commit and push without a release, only when the user
+  says so.
+- Anything larger, or spanning modules: leave committing to the user.
+- Before each commit, push, or bump: fetch, and `git pull --rebase` when
+  origin moved.
+
 ## Open
 
 1. `gomake --list` must show `:cascade:open`; else stop: gomake needs
