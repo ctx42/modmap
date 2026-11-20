@@ -50,7 +50,7 @@ type planMod struct {
 
 	// Map is the name of the map that found the module on disk. It is empty
 	// for a module read from the module cache.
-	Map string `json:"map,omitempty"`
+	Map string `json:"group,omitempty"`
 
 	// Dir is the absolute path of the module directory. It is empty for a
 	// module read from the module cache.

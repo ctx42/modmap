@@ -199,19 +199,19 @@ modmap -c modmap.yaml --plan github.com/ctx42/testkit
     [
       {
         "path": "github.com/ctx42/testkit",
-        "map": "ctx42",
+        "group": "ctx42",
         "dir": "/src/ctx42/testkit"
       }
     ],
     [
       {
         "path": "github.com/ctx42/ring",
-        "map": "ctx42",
+        "group": "ctx42",
         "dir": "/src/ctx42/ring"
       },
       {
         "path": "github.com/customer/app",
-        "map": "work",
+        "group": "work",
         "dir": "/src/customer/app"
       }
     ]
@@ -219,7 +219,7 @@ modmap -c modmap.yaml --plan github.com/ctx42/testkit
   "excluded": [
     {
       "path": "github.com/ctx42/blog",
-      "map": "ctx42",
+      "group": "ctx42",
       "dir": "/src/ctx42/blog"
     },
     {
@@ -242,7 +242,7 @@ A map finds a module when one of its `dirs` holds it and its `include`
 globs keep it. A dependent is planned only when every map finding it
 keeps it, so one map excluding it keeps it out. The dependents kept out
 are listed under `excluded`, as are those read from the module cache,
-which have no `map` or `dir`. A module reaching the change only through
+which have no `group` or `dir`. A module reaching the change only through
 an excluded one is still planned, after the change.
 
 Every changed module has to be found on disk and kept; a changed module
@@ -263,7 +263,7 @@ modmap -c modmap.yaml --modules
 [
   {
     "path": "github.com/ctx42/ring",
-    "map": "ctx42",
+    "group": "ctx42",
     "dir": "/src/ctx42/ring"
   }
 ]

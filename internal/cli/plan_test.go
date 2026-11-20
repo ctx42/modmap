@@ -21,6 +21,33 @@ import (
 	"github.com/ctx42/modmap/internal/conf"
 )
 
+func Test_planMod_json_tabular(t *testing.T) {
+	tt := []struct {
+		testN string
+
+		pm   planMod
+		want string
+	}{
+		{
+			"every field",
+			planMod{Path: "example.com/a", Map: "one", Dir: "/src/a"},
+			`{"path":"example.com/a","group":"one","dir":"/src/a"}`,
+		},
+		{"path only", planMod{Path: "example.com/a"}, `{"path":"example.com/a"}`},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.testN, func(t *testing.T) {
+			// --- When ---
+			have, err := json.Marshal(tc.pm)
+
+			// --- Then ---
+			assert.NoError(t, err)
+			assert.Equal(t, tc.want, string(have))
+		})
+	}
+}
+
 func Test_finder_holds_tabular(t *testing.T) {
 	tt := []struct {
 		testN string
