@@ -24,6 +24,7 @@ const (
 	usgModules = "print the modules every group keeps as JSON"
 	usgLag     = "add to the plan how far it lifts each requirement"
 	usgHelp    = "show this help"
+	usgVersion = "print the modmap version"
 )
 
 // config represents modmap run configuration.
@@ -78,6 +79,9 @@ type config struct {
 	// Show the command usage. Set by the "--help" option.
 	showHelp bool
 
+	// Print the modmap version. Set by the "--version" option.
+	showVersion bool
+
 	// Opens the written diagram in a browser. It is nil outside the tests,
 	// which replace it to keep a browser from being launched.
 	opener func(url string) error
@@ -124,6 +128,7 @@ func (cfg *config) flags() func() {
 	fModules := cfg.fs.Bool("modules", false, usgModules)
 	fLag := cfg.fs.Bool("lag", false, usgLag)
 	fHelp := cfg.fs.BoolSL("help", "h", false, usgHelp)
+	fVersion := cfg.fs.Bool("version", false, usgVersion)
 
 	return func() {
 		cfg.out = *fOut
@@ -132,6 +137,7 @@ func (cfg *config) flags() func() {
 		cfg.modules = *fModules
 		cfg.lag = *fLag
 		cfg.showHelp = *fHelp
+		cfg.showVersion = *fVersion
 	}
 }
 
@@ -149,7 +155,7 @@ func (cfg *config) parse(args []string) error {
 	}
 	apply()
 
-	if cfg.showHelp {
+	if cfg.showHelp || cfg.showVersion {
 		return nil
 	}
 	if cfg.web && cfg.out != "" {

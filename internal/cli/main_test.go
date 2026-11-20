@@ -6,6 +6,7 @@ package cli
 import (
 	"context"
 	"path/filepath"
+	"runtime/debug"
 	"testing"
 
 	"github.com/ctx42/ring/pkg/ring/ringtest"
@@ -25,6 +26,20 @@ func Test_Main(t *testing.T) {
 		// --- Then ---
 		assert.Equal(t, 0, have)
 		assert.Contain(t, "Usage:", tst.Stderr())
+	})
+
+	t.Run("version is written to stdout", func(t *testing.T) {
+		// --- Given ---
+		tst := ringtest.New(t).WetStdout()
+		rng := tst.Ring("--version")
+
+		// --- When ---
+		have := Main(t.Context(), rng)
+
+		// --- Then ---
+		assert.Equal(t, 0, have)
+		inf, _ := debug.ReadBuildInfo()
+		assert.Equal(t, "modmap "+version(inf)+"\n", tst.Stdout())
 	})
 
 	t.Run("the diagram is written to the output file", func(t *testing.T) {
@@ -89,4 +104,43 @@ func Test_Main(t *testing.T) {
 		assert.Contain(t, want, tst.Stderr())
 		assert.Contain(t, "Usage:", tst.Stderr())
 	})
+}
+
+func Test_version_tabular(t *testing.T) {
+	tt := []struct {
+		testN string
+
+		inf  *debug.BuildInfo
+		want string
+	}{
+		{"no build info", nil, "(devel)"},
+		{"no version", &debug.BuildInfo{}, "(devel)"},
+		{
+			"devel",
+			&debug.BuildInfo{Main: debug.Module{Version: "(devel)"}},
+			"(devel)",
+		},
+		{
+			"release",
+			&debug.BuildInfo{Main: debug.Module{Version: "v0.6.0"}},
+			"v0.6.0",
+		},
+		{
+			"pseudo-version",
+			&debug.BuildInfo{Main: debug.Module{
+				Version: "v0.6.1-0.20261120174235-76f1e0d2d5c8+dirty",
+			}},
+			"v0.6.1-0.20261120174235-76f1e0d2d5c8+dirty",
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.testN, func(t *testing.T) {
+			// --- When ---
+			have := version(tc.inf)
+
+			// --- Then ---
+			assert.Equal(t, tc.want, have)
+		})
+	}
 }

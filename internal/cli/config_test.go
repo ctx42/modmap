@@ -46,6 +46,7 @@ func Test_config_flags(t *testing.T) {
 		for _, name := range []string{
 			"include", "i", "exclude", "e", "out", "o", "config", "c",
 			"web", "yes", "y", "plan", "lag", "modules", "help", "h",
+			"version",
 		} {
 			assert.NotNil(t, cfg.fs.Lookup(name))
 		}
@@ -59,7 +60,7 @@ func Test_config_flags(t *testing.T) {
 			"-i", "a/*", "-e", "b/*", "-o", "out.svg",
 			"-c", "m.yaml", "-c", "n.yaml",
 			"--web", "-y", "--plan", "example.com/a", "--plan", "example.com/b",
-			"--lag", "--modules", "-h",
+			"--lag", "--modules", "-h", "--version",
 		}))
 
 		// --- When ---
@@ -76,6 +77,7 @@ func Test_config_flags(t *testing.T) {
 		assert.True(t, cfg.lag)
 		assert.True(t, cfg.modules)
 		assert.True(t, cfg.showHelp)
+		assert.True(t, cfg.showVersion)
 	})
 }
 
@@ -183,6 +185,19 @@ func Test_config_parse(t *testing.T) {
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.True(t, cfg.showHelp)
+	})
+
+	t.Run("version skips validation", func(t *testing.T) {
+		// --- Given ---
+		args := []string{"--version"}
+		cfg := &config{}
+
+		// --- When ---
+		err := cfg.parse(args)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.True(t, cfg.showVersion)
 	})
 
 	t.Run("yes option is recognized", func(t *testing.T) {

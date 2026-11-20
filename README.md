@@ -348,6 +348,7 @@ Command line options:
 | `--modules`     | print the modules every group keeps as JSON         |
 | `-y, --yes`     | do not ask before rendering a very wide level       |
 | `-h, --help`    | show usage                                          |
+| `--version`     | print the modmap version                            |
 
 Configuration file keys: `out` at the top level, then one entry per
 group under `groups`:
