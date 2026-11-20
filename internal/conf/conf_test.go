@@ -14,12 +14,12 @@ import (
 )
 
 func Test_Load(t *testing.T) {
-	t.Run("maps are read", func(t *testing.T) {
+	t.Run("groups are read", func(t *testing.T) {
 		// --- Given ---
 		dir := t.TempDir()
 		pth := writeConf(t, ""+
 			"out: /out/ctx42.svg\n"+
-			"maps:\n"+
+			"groups:\n"+
 			"  - name: ctx42\n"+
 			"    dirs: [/src/ctx42]\n"+
 			"    include: ['github.com/ctx42/*']\n"+
@@ -45,7 +45,7 @@ func Test_Load(t *testing.T) {
 		dir := t.TempDir()
 		pth := writeConf(t, ""+
 			"out: tmp/here.svg\n"+
-			"maps:\n"+
+			"groups:\n"+
 			"  - name: here\n"+
 			"    dirs: [..]\n", dir)
 
@@ -73,7 +73,7 @@ func Test_Load(t *testing.T) {
 
 	t.Run("error - malformed file", func(t *testing.T) {
 		// --- Given ---
-		pth := writeConf(t, "maps: [", t.TempDir())
+		pth := writeConf(t, "groups: [", t.TempDir())
 
 		// --- When ---
 		have, err := Load(pth)
@@ -86,7 +86,7 @@ func Test_Load(t *testing.T) {
 	t.Run("error - no output", func(t *testing.T) {
 		// --- Given ---
 		pth := writeConf(t, ""+
-			"maps:\n"+
+			"groups:\n"+
 			"  - name: a\n"+
 			"    dirs: [src]\n",
 			t.TempDir(),
@@ -104,7 +104,7 @@ func Test_Load(t *testing.T) {
 		// --- Given ---
 		pth := writeConf(t, ""+
 			"out: all.svg\n"+
-			"maps:\n"+
+			"groups:\n"+
 			"  - name: a\n"+
 			"    dirs: [src]\n"+
 			"    out: a.svg\n",
@@ -119,11 +119,49 @@ func Test_Load(t *testing.T) {
 		assert.Nil(t, have)
 	})
 
-	t.Run("error - unknown key", func(t *testing.T) {
+	t.Run("error - maps key", func(t *testing.T) {
 		// --- Given ---
 		pth := writeConf(t, ""+
 			"out: a.svg\n"+
 			"maps:\n"+
+			"  - name: a\n"+
+			"    dirs: [src]\n",
+			t.TempDir(),
+		)
+
+		// --- When ---
+		have, err := Load(pth)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrMapsKey, err)
+		assert.ErrorEqual(t, "parse configuration: maps was renamed to groups", err)
+		assert.Nil(t, have)
+	})
+
+	t.Run("error - maps key beside groups", func(t *testing.T) {
+		// --- Given ---
+		pth := writeConf(t, ""+
+			"out: a.svg\n"+
+			"maps: []\n"+
+			"groups:\n"+
+			"  - name: a\n"+
+			"    dirs: [src]\n",
+			t.TempDir(),
+		)
+
+		// --- When ---
+		have, err := Load(pth)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrMapsKey, err)
+		assert.Nil(t, have)
+	})
+
+	t.Run("error - unknown key", func(t *testing.T) {
+		// --- Given ---
+		pth := writeConf(t, ""+
+			"out: a.svg\n"+
+			"groups:\n"+
 			"  - name: a\n"+
 			"    dirs: [src]\n"+
 			"    exlude: [example.com/x]\n",
@@ -140,7 +178,7 @@ func Test_Load(t *testing.T) {
 
 	t.Run("error - invalid configuration", func(t *testing.T) {
 		// --- Given ---
-		pth := writeConf(t, "out: a.svg\nmaps: []\n", t.TempDir())
+		pth := writeConf(t, "out: a.svg\ngroups: []\n", t.TempDir())
 
 		// --- When ---
 		have, err := Load(pth)
@@ -312,6 +350,33 @@ func Test_Config_resolve(t *testing.T) {
 		// --- Then ---
 		assert.Equal(t, "", cfg.Out)
 	})
+}
+
+func Test_hasKey_tabular(t *testing.T) {
+	tt := []struct {
+		testN string
+
+		data string
+		want bool
+	}{
+		{"present", "a: 1\nb: 2\n", true},
+		{"present without a value", "a:\n", true},
+		{"absent", "b: 2\n", false},
+		{"nested only", "b:\n  a: 1\n", false},
+		{"list document", "- a\n", false},
+		{"malformed", "a: [", false},
+		{"empty", "", false},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.testN, func(t *testing.T) {
+			// --- When ---
+			have := hasKey([]byte(tc.data), "a")
+
+			// --- Then ---
+			assert.Equal(t, tc.want, have)
+		})
+	}
 }
 
 func Test_absPath_tabular(t *testing.T) {

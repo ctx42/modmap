@@ -35,7 +35,7 @@ func crossMaps(t tester.T) string {
 	)
 	return oskit.Create(t, ""+
 		"out: all.svg\n"+
-		"maps:\n"+
+		"groups:\n"+
 		"  - name: ctx42\n"+
 		"    dirs: ["+filepath.Join(src, "ctx42")+"]\n"+
 		"    include: ['github.com/ctx42/*']\n"+
@@ -81,7 +81,7 @@ func planMaps(t tester.T) (string, string) {
 	writeMod(t, "module github.com/customer/z\n", src, "customer", "z")
 	cnf := oskit.Create(t, ""+
 		"out: all.svg\n"+
-		"maps:\n"+
+		"groups:\n"+
 		"  - name: ctx42\n"+
 		"    dirs: ["+filepath.Join(src, "ctx42")+"]\n"+
 		"    include: ['github.com/ctx42/*']\n"+
@@ -128,7 +128,7 @@ func wideMaps(t tester.T) string {
 	}
 	return oskit.Create(t, ""+
 		"out: all.svg\n"+
-		"maps:\n"+
+		"groups:\n"+
 		"  - name: one\n"+
 		"    dirs: ["+filepath.Join(src, "one")+"]\n"+
 		"  - name: two\n"+

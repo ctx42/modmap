@@ -401,7 +401,7 @@ func Test_runPlan(t *testing.T) {
 		_, src := planMaps(t)
 		cnf := oskit.Create(t, ""+
 			"out: all.svg\n"+
-			"maps:\n"+
+			"groups:\n"+
 			"  - name: ctx42\n"+
 			"    dirs: ["+filepath.Join(src, "ctx42")+"]\n"+
 			"    include: ['github.com/ctx42/*']\n"+
@@ -450,7 +450,7 @@ func Test_runPlan(t *testing.T) {
 			"require example.com/c v1.0.0\n", src, "a")
 		cnf := oskit.Create(t, ""+
 			"out: all.svg\n"+
-			"maps:\n"+
+			"groups:\n"+
 			"  - name: one\n"+
 			"    dirs: ["+src+"]\n", t.TempDir(), "modmap.yaml")
 		fil := must.Value(conf.Load(cnf))
@@ -486,7 +486,7 @@ func Test_runPlan(t *testing.T) {
 		gone := filepath.Join(t.TempDir(), "gone")
 		cnf := oskit.Create(t, ""+
 			"out: all.svg\n"+
-			"maps:\n"+
+			"groups:\n"+
 			"  - name: one\n"+
 			"    dirs: ["+gone+"]\n", t.TempDir(), "modmap.yaml")
 		fil := must.Value(conf.Load(cnf))
@@ -563,7 +563,7 @@ func Test_runPlan(t *testing.T) {
 		writeMod(t, "module other.com/b\n", src, "one", "b")
 		cnf := oskit.Create(t, ""+
 			"out: all.svg\n"+
-			"maps:\n"+
+			"groups:\n"+
 			"  - name: one\n"+
 			"    dirs: ["+filepath.Join(src, "one")+"]\n"+
 			"    include: ['example.com/*']\n"+
@@ -592,7 +592,7 @@ func Test_runPlan(t *testing.T) {
 			"require example.com/c v1.0.0\n", src, "a")
 		cnf := oskit.Create(t, ""+
 			"out: all.svg\n"+
-			"maps:\n"+
+			"groups:\n"+
 			"  - name: one\n"+
 			"    dirs: ["+src+"]\n", t.TempDir(), "modmap.yaml")
 		fil := must.Value(conf.Load(cnf))
@@ -630,7 +630,7 @@ func Test_runPlan(t *testing.T) {
 		)
 		cnf := oskit.Create(t, ""+
 			"out: all.svg\n"+
-			"maps:\n"+
+			"groups:\n"+
 			"  - name: ctx42\n"+
 			"    dirs: ["+filepath.Join(src, "ctx42")+"]\n"+
 			"    include: ['github.com/ctx42/*']\n"+
@@ -778,7 +778,7 @@ func Test_runModules(t *testing.T) {
 			"require example.com/c v1.0.0\n", src, "a")
 		cnf := oskit.Create(t, ""+
 			"out: all.svg\n"+
-			"maps:\n"+
+			"groups:\n"+
 			"  - name: one\n"+
 			"    dirs: ["+src+"]\n", t.TempDir(), "modmap.yaml")
 		fil := must.Value(conf.Load(cnf))
@@ -809,7 +809,7 @@ func Test_runModules(t *testing.T) {
 		gone := filepath.Join(t.TempDir(), "gone")
 		cnf := oskit.Create(t, ""+
 			"out: all.svg\n"+
-			"maps:\n"+
+			"groups:\n"+
 			"  - name: one\n"+
 			"    dirs: ["+gone+"]\n", t.TempDir(), "modmap.yaml")
 		fil := must.Value(conf.Load(cnf))

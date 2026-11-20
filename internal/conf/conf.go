@@ -40,6 +40,10 @@ var (
 
 	// ErrUnkMap is returned when a requested map is not declared.
 	ErrUnkMap = errors.New("unknown map")
+
+	// ErrMapsKey is returned for a configuration file using the "maps" key,
+	// which was renamed to "groups".
+	ErrMapsKey = errors.New("maps was renamed to groups")
 )
 
 // Map describes one map the configuration file declares.
@@ -65,7 +69,7 @@ type Config struct {
 	Out string `yaml:"out"`
 
 	// Maps holds the maps the file declares.
-	Maps []Map `yaml:"maps"`
+	Maps []Map `yaml:"groups"`
 }
 
 // Load reads the configuration file at pth. The relative directory and output
@@ -79,6 +83,9 @@ func Load(pth string) (*Config, error) {
 	cfg := &Config{}
 	opt := yaml.DisallowUnknownField()
 	if err = yaml.UnmarshalWithOptions(data, cfg, opt); err != nil {
+		if hasKey(data, "maps") {
+			err = ErrMapsKey
+		}
 		return nil, fmt.Errorf("parse configuration: %w", err)
 	}
 	cfg.resolve(filepath.Dir(pth))
@@ -165,6 +172,17 @@ func (cfg *Config) resolve(dir string) {
 			mp.Dirs[idx] = absPath(dir, pth)
 		}
 	}
+}
+
+// hasKey reports whether the YAML document in data is a mapping holding the
+// top level key.
+func hasKey(data []byte, key string) bool {
+	var doc map[string]any
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return false
+	}
+	_, ok := doc[key]
+	return ok
 }
 
 // absPath returns pth as a clean absolute path, resolving a relative one

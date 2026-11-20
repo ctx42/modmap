@@ -359,7 +359,7 @@ func Test_run(t *testing.T) {
 		gone := filepath.Join(t.TempDir(), "gone")
 		cnf := oskit.Create(t, ""+
 			"out: all.svg\n"+
-			"maps:\n"+
+			"groups:\n"+
 			"  - name: one\n"+
 			"    dirs: ["+gone+"]\n", t.TempDir(), "modmap.yaml")
 		cfg := &config{conf: cnf}

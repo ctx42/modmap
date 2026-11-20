@@ -338,13 +338,14 @@ Command line options:
 | `-h, --help`    | show usage                                        |
 
 Configuration file keys: `out` at the top level, then one entry per
-map under `maps`:
+group under `groups`:
 
+| Key       | Meaning                                              |
 | Key       | Meaning                                              |
 |-----------|------------------------------------------------------|
 | `out`     | SVG file the image is written to; required           |
-| `maps`    | the maps to draw; at least one                       |
-| `name`    | how the map is asked for; required and unique        |
+| `groups`  | the groups to draw; at least one                     |
+| `name`    | how the group is asked for; required and unique      |
 | `dirs`    | directories to scan; at least one                    |
 | `include` | globs deciding what is drawn; all modules when empty |
 | `exclude` | globs removing modules; optional                     |

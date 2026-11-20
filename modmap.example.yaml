@@ -46,7 +46,7 @@
 # ignores it. A map has no "out" key of its own.
 out: tmp/modules.svg
 
-maps:
+groups:
     # A map of one workspace, filtered to the modules you own. This is the
     # shape you want almost always: the filter keeps the picture readable and
     # keeps the run cheap.
