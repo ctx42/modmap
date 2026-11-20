@@ -30,7 +30,7 @@ const (
 
 	// defName is the file name of a map whose title carries nothing a
 	// file name can be built from.
-	defName = "map"
+	defName = "diagram"
 )
 
 // Permissions the viewer writes with. The pages are the user's alone.
@@ -44,7 +44,7 @@ const (
 
 // ErrUnsafeDir is returned when the directory holding the pages is not a
 // directory of the current user's own.
-var ErrUnsafeDir = errors.New("unsafe map directory")
+var ErrUnsafeDir = errors.New("unsafe diagram directory")
 
 //go:embed page.html
 var pages embed.FS
@@ -66,7 +66,7 @@ func Open(
 
 	dir, err := filepath.Abs(filepath.Join(os.TempDir(), dirName))
 	if err != nil {
-		return "", fmt.Errorf("create map directory: %w", err)
+		return "", fmt.Errorf("create diagram directory: %w", err)
 	}
 	pth, err := write(dir, title, doc)
 	if err != nil {
@@ -93,10 +93,10 @@ func write(dir, title string, doc []byte) (string, error) {
 		return "", err
 	}
 	if err = replaceFile(dir, name+".svg", doc); err != nil {
-		return "", fmt.Errorf("write map file: %w", err)
+		return "", fmt.Errorf("write diagram file: %w", err)
 	}
 	if err = replaceFile(dir, name+".html", htm); err != nil {
-		return "", fmt.Errorf("write map page: %w", err)
+		return "", fmt.Errorf("write diagram page: %w", err)
 	}
 	return filepath.Join(dir, name+".html"), nil
 }
@@ -106,11 +106,11 @@ func write(dir, title string, doc []byte) (string, error) {
 // symbolic link, a non-directory, or a directory of another user.
 func privateDir(dir string) error {
 	if err := os.MkdirAll(dir, dirPerm); err != nil {
-		return fmt.Errorf("create map directory: %w", err)
+		return fmt.Errorf("create diagram directory: %w", err)
 	}
 	inf, err := os.Lstat(dir)
 	if err != nil {
-		return fmt.Errorf("create map directory: %w", err)
+		return fmt.Errorf("create diagram directory: %w", err)
 	}
 	if !inf.IsDir() {
 		return fmt.Errorf("%w: not a directory: %s", ErrUnsafeDir, dir)
@@ -122,7 +122,7 @@ func privateDir(dir string) error {
 		return nil
 	}
 	if err = os.Chmod(dir, dirPerm); err != nil {
-		return fmt.Errorf("create map directory: %w", err)
+		return fmt.Errorf("create diagram directory: %w", err)
 	}
 	return nil
 }

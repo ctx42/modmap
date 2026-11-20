@@ -186,7 +186,7 @@ func show(
 	}
 	pth, err := view.Open(spc.title(), buf.Bytes(), cfg.opener)
 	if pth != "" {
-		logf("map written to %s", pth)
+		logf("diagram written to %s", pth)
 	}
 	return err
 }
@@ -204,7 +204,7 @@ func write(grp *graph.Graph, cols []svg.Column, pth string) error {
 		return err
 	}
 	if err = replaceFile(pth, buf.Bytes()); err != nil {
-		return fmt.Errorf("write map file: %w", err)
+		return fmt.Errorf("write diagram file: %w", err)
 	}
 	return nil
 }

@@ -324,18 +324,18 @@ reads only the local clones: fetch them first for an up-to-date answer.
 
 Command line options:
 
-| Option          | Meaning                                           |
-|-----------------|---------------------------------------------------|
-| `-o, --out`     | SVG file to write; required without `-c`/`--web`  |
-| `--web`         | open the map in a browser instead of writing it   |
-| `-i, --include` | draw only modules matching the glob; repeatable   |
-| `-e, --exclude` | never draw modules matching the glob; repeatable  |
-| `-c, --config`  | configuration file naming the maps to generate    |
-| `--plan`        | print the update plan of a module; repeatable     |
-| `--lag`         | add to the plan how far it lifts each requirement |
-| `--modules`     | print the modules every map keeps as JSON         |
-| `-y, --yes`     | do not ask before rendering a very wide level     |
-| `-h, --help`    | show usage                                        |
+| Option          | Meaning                                             |
+|-----------------|-----------------------------------------------------|
+| `-o, --out`     | SVG file to write; required without `-c`/`--web`    |
+| `--web`         | open the diagram in a browser instead of writing it |
+| `-i, --include` | draw only modules matching the glob; repeatable     |
+| `-e, --exclude` | never draw modules matching the glob; repeatable    |
+| `-c, --config`  | configuration file naming the groups to draw        |
+| `--plan`        | print the update plan of a module; repeatable       |
+| `--lag`         | add to the plan how far it lifts each requirement   |
+| `--modules`     | print the modules every group keeps as JSON         |
+| `-y, --yes`     | do not ask before rendering a very wide level       |
+| `-h, --help`    | show usage                                          |
 
 Configuration file keys: `out` at the top level, then one entry per
 group under `groups`:

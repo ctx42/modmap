@@ -595,8 +595,8 @@ func Test_config_help(t *testing.T) {
 
 	// --- Then ---
 	assert.Contain(t, "modmap [options] -o <file.svg> <dir>", have)
-	assert.Contain(t, "modmap -c <config.yaml> [map...]", have)
-	assert.Contain(t, "modmap --web -c <config.yaml> [map...]", have)
+	assert.Contain(t, "modmap -c <config.yaml> [group...]", have)
+	assert.Contain(t, "modmap --web -c <config.yaml> [group...]", have)
 	wPlan := "modmap -c <config.yaml> --plan <module>... [--lag]\n"
 	assert.Contain(t, wPlan, have)
 	assert.Contain(t, "modmap -c <config.yaml> --modules\n", have)

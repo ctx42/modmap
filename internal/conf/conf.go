@@ -21,25 +21,25 @@ import (
 // Configuration file errors.
 var (
 	// ErrNoMaps is returned for a configuration file declaring no maps.
-	ErrNoMaps = errors.New("no maps declared")
+	ErrNoMaps = errors.New("no groups declared")
 
 	// ErrNoName is returned for a map without a name.
-	ErrNoName = errors.New("map without a name")
+	ErrNoName = errors.New("group without a name")
 
 	// ErrDupName is returned when two maps share a name.
-	ErrDupName = errors.New("duplicate map name")
+	ErrDupName = errors.New("duplicate group name")
 
 	// ErrNoDirs is returned for a map without directories to scan.
-	ErrNoDirs = errors.New("map without directories")
+	ErrNoDirs = errors.New("group without directories")
 
 	// ErrEmptyDir is returned for a map listing an empty directory.
-	ErrEmptyDir = errors.New("map with an empty directory")
+	ErrEmptyDir = errors.New("group with an empty directory")
 
 	// ErrNoOut is returned for a configuration without an output file.
 	ErrNoOut = errors.New("no output file")
 
 	// ErrUnkMap is returned when a requested map is not declared.
-	ErrUnkMap = errors.New("unknown map")
+	ErrUnkMap = errors.New("unknown group")
 
 	// ErrMapsKey is returned for a configuration file using the "maps" key,
 	// which was renamed to "groups".
@@ -141,7 +141,7 @@ func (cfg *Config) validate() error {
 	for idx, mp := range cfg.Maps {
 		switch {
 		case mp.Name == "":
-			return fmt.Errorf("%w: maps[%d]", ErrNoName, idx)
+			return fmt.Errorf("%w: groups[%d]", ErrNoName, idx)
 
 		case names[mp.Name]:
 			return fmt.Errorf("%w: %s", ErrDupName, mp.Name)

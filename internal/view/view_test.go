@@ -85,7 +85,7 @@ func Test_Open(t *testing.T) {
 		have, err := Open("ctx42", []byte("<svg/>"), nil)
 
 		// --- Then ---
-		assert.ErrorContain(t, "create map directory", err)
+		assert.ErrorContain(t, "create diagram directory", err)
 		assert.Equal(t, "", have)
 	})
 }
@@ -100,8 +100,8 @@ func Test_write(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, filepath.Join(dir, defName+".html"), have)
-		assert.True(t, oskit.PathExists(t, dir, defName+".svg"))
+		assert.Equal(t, filepath.Join(dir, "diagram.html"), have)
+		assert.True(t, oskit.PathExists(t, dir, "diagram.svg"))
 	})
 
 	t.Run("a rerun rewrites the same files", func(t *testing.T) {
@@ -173,7 +173,7 @@ func Test_write(t *testing.T) {
 		have, err := write(dir, "ctx42", []byte("<svg/>"))
 
 		// --- Then ---
-		assert.ErrorContain(t, "write map file", err)
+		assert.ErrorContain(t, "write diagram file", err)
 		assert.Equal(t, "", have)
 		assert.False(t, oskit.PathExists(t, dir, "ctx42.html"))
 	})
@@ -187,7 +187,7 @@ func Test_write(t *testing.T) {
 		have, err := write(dir, "ctx42", []byte("<svg/>"))
 
 		// --- Then ---
-		assert.ErrorContain(t, "write map page", err)
+		assert.ErrorContain(t, "write diagram page", err)
 		assert.Equal(t, "", have)
 	})
 
@@ -199,7 +199,7 @@ func Test_write(t *testing.T) {
 		have, err := write(filepath.Join(dir, "sub"), "ctx42", nil)
 
 		// --- Then ---
-		assert.ErrorContain(t, "create map directory", err)
+		assert.ErrorContain(t, "create diagram directory", err)
 		assert.Equal(t, "", have)
 	})
 }
@@ -269,7 +269,7 @@ func Test_privateDir(t *testing.T) {
 
 		// --- Then ---
 		assert.ErrorIs(t, syscall.ENOTDIR, err)
-		assert.ErrorContain(t, "create map directory", err)
+		assert.ErrorContain(t, "create diagram directory", err)
 	})
 }
 

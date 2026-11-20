@@ -18,10 +18,10 @@ const (
 	usgExclude = "never render modules matching the glob (repeatable)"
 	usgOut     = "path of the SVG file to write"
 	usgConf    = "path of the YAML configuration file"
-	usgWeb     = "open the map in a browser instead of writing it"
+	usgWeb     = "open the diagram in a browser instead of writing it"
 	usgYes     = "do not ask for confirmation on wide levels"
 	usgPlan    = "print the update plan of the changed module (repeatable)"
-	usgModules = "print the modules every map keeps as JSON"
+	usgModules = "print the modules every group keeps as JSON"
 	usgLag     = "add to the plan how far it lifts each requirement"
 	usgHelp    = "show this help"
 )
@@ -217,8 +217,8 @@ func (cfg *config) help() string {
 		"Usage:\n" +
 		"  %[1]s [options] -o <file.svg> <dir>\n" +
 		"  %[1]s [options] --web <dir>\n" +
-		"  %[1]s -c <config.yaml> [map...]\n" +
-		"  %[1]s --web -c <config.yaml> [map...]\n" +
+		"  %[1]s -c <config.yaml> [group...]\n" +
+		"  %[1]s --web -c <config.yaml> [group...]\n" +
 		"  %[1]s -c <config.yaml> --plan <module>... [--lag]\n" +
 		"  %[1]s -c <config.yaml> --modules\n" +
 		"\n" +

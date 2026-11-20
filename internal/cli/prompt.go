@@ -36,7 +36,7 @@ func confirm(
 	}
 	format := "" +
 		"the widest level holds %d modules, " +
-		"the map will be very wide\n"
+		"the diagram will be very wide\n"
 	_, _ = fmt.Fprintf(rng.Stderr(), format, widest)
 	if yes || !isTTY(rng.Stdin()) {
 		return true, nil

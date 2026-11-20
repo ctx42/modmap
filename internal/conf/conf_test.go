@@ -185,7 +185,7 @@ func Test_Load(t *testing.T) {
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrNoMaps, err)
-		assert.ErrorEqual(t, "validate "+pth+": no maps declared", err)
+		assert.ErrorEqual(t, "validate "+pth+": no groups declared", err)
 		assert.Nil(t, have)
 	})
 }
@@ -264,7 +264,7 @@ func Test_Config_validate(t *testing.T) {
 		err := cfg.validate()
 
 		// --- Then ---
-		assert.ErrorEqual(t, "map without a name: maps[1]", err)
+		assert.ErrorEqual(t, "group without a name: groups[1]", err)
 	})
 }
 

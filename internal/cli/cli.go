@@ -42,7 +42,7 @@ var (
 
 	// errPlanMap is returned when the plan is given map names; it spans
 	// every map the configuration file declares.
-	errPlanMap = errors.New("--plan takes no map name")
+	errPlanMap = errors.New("--plan takes no group name")
 
 	// errLagPlan is returned when the lag is asked for without a plan.
 	errLagPlan = errors.New("--lag requires --plan")
@@ -54,7 +54,7 @@ var (
 	// errModulesOnly is returned when the modules are asked for together
 	// with a plan, a browser, or map names; they span every map.
 	errModulesOnly = errors.New(
-		"--modules cannot be used with --plan, --web, or map names",
+		"--modules cannot be used with --plan, --web, or group names",
 	)
 )
 

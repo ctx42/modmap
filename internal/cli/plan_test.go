@@ -577,7 +577,7 @@ func Test_runPlan(t *testing.T) {
 		err := runPlan(t.Context(), rng, cfg, fil)
 
 		// --- Then ---
-		want := "module excluded: github.com/ctx42/blog (map: ctx42)"
+		want := "module excluded: github.com/ctx42/blog (group: ctx42)"
 		assert.ErrorEqual(t, want, err)
 		assert.ErrorIs(t, errModExcluded, err)
 		assert.Contain(t, "graph has 6 modules", tst.Stderr())
@@ -607,7 +607,7 @@ func Test_runPlan(t *testing.T) {
 		err := runPlan(t.Context(), rng, cfg, fil)
 
 		// --- Then ---
-		assert.ErrorEqual(t, "module excluded: other.com/b (map: one)", err)
+		assert.ErrorEqual(t, "module excluded: other.com/b (group: one)", err)
 		assert.Contain(t, "graph has 2 modules", tst.Stderr())
 	})
 

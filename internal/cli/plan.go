@@ -180,7 +180,7 @@ func runPlan(
 		// The scan finds modules on disk only below the map directories,
 		// so one of the maps names the changed module.
 		if name, ok := fnds.owner(root, dir); !ok {
-			const format = "%w: %s (map: %s)"
+			const format = "%w: %s (group: %s)"
 			return fmt.Errorf(format, errModExcluded, root, name)
 		}
 	}

@@ -234,7 +234,7 @@ func Test_Renderer_Render(t *testing.T) {
 
 		// --- Then ---
 		assert.ErrorIs(t, errWrite, err)
-		assert.ErrorContain(t, "write map", err)
+		assert.ErrorContain(t, "write diagram", err)
 	})
 }
 

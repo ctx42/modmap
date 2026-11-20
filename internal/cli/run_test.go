@@ -235,7 +235,7 @@ func Test_run(t *testing.T) {
 		assert.Contain(t, `data-module="github.com/customer/a"`, page)
 		assert.False(t, oskit.PathExists(t, filepath.Dir(cnf), "all.svg"))
 
-		assert.Contain(t, "map written to "+pth, tst.Stderr())
+		assert.Contain(t, "diagram written to "+pth, tst.Stderr())
 	})
 
 	t.Run("web opens the named maps", func(t *testing.T) {
@@ -263,7 +263,7 @@ func Test_run(t *testing.T) {
 		assert.Contain(t, ">ctx42</text>", page)
 		assert.False(t, oskit.PathExists(t, filepath.Dir(cnf), "all.svg"))
 
-		assert.Contain(t, "map written to "+pth, tst.Stderr())
+		assert.Contain(t, "diagram written to "+pth, tst.Stderr())
 	})
 
 	t.Run("web opens one named map", func(t *testing.T) {
@@ -339,7 +339,7 @@ func Test_run(t *testing.T) {
 		err := run(t.Context(), rng, cfg)
 
 		// --- Then ---
-		assert.ErrorContain(t, "unknown map: three", err)
+		assert.ErrorContain(t, "unknown group: three", err)
 	})
 
 	t.Run("error - configuration cannot be read", func(t *testing.T) {
@@ -534,7 +534,7 @@ func Test_generate(t *testing.T) {
 		assert.NoError(t, err)
 		pth := filepath.Join(tmp, "modmap", filepath.Base(src)+".html")
 		assert.Equal(t, "file://"+pth, opened)
-		assert.Contain(t, "map written to "+pth, tst.Stderr())
+		assert.Contain(t, "diagram written to "+pth, tst.Stderr())
 	})
 
 	t.Run("error - directory does not exist", func(t *testing.T) {
@@ -631,7 +631,7 @@ func Test_generate(t *testing.T) {
 
 		// --- Then ---
 		assert.ErrorIs(t, fs.ErrNotExist, err)
-		assert.ErrorContain(t, "write map file", err)
+		assert.ErrorContain(t, "write diagram file", err)
 
 		assert.Contain(t, "graph has 1 modules", tst.Stderr())
 	})
@@ -698,7 +698,7 @@ func Test_show(t *testing.T) {
 		pth := filepath.Join(tmp, "modmap", filepath.Base(src)+".html")
 		assert.Equal(t, "file://"+pth, opened)
 		assert.Contain(t, "example.com/a", oskit.ReadFileStr(t, pth))
-		assert.Contain(t, "map written to "+pth, tst.Stderr())
+		assert.Contain(t, "diagram written to "+pth, tst.Stderr())
 	})
 
 	t.Run("error - no browser to open the map in", func(t *testing.T) {
@@ -722,7 +722,7 @@ func Test_show(t *testing.T) {
 		assert.ErrorIs(t, view.ErrNoBrowser, err)
 
 		pth := filepath.Join(tmp, "modmap", filepath.Base(src)+".html")
-		assert.Contain(t, "map written to "+pth, tst.Stderr())
+		assert.Contain(t, "diagram written to "+pth, tst.Stderr())
 	})
 }
 
@@ -754,6 +754,6 @@ func Test_write(t *testing.T) {
 
 		// --- Then ---
 		assert.ErrorIs(t, fs.ErrNotExist, err)
-		assert.ErrorContain(t, "write map file", err)
+		assert.ErrorContain(t, "write diagram file", err)
 	})
 }

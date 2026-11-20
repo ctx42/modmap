@@ -51,7 +51,7 @@ func Test_confirm(t *testing.T) {
 		assert.True(t, have)
 		want := "" +
 			"the widest level holds 21 modules, " +
-			"the map will be very wide\n"
+			"the diagram will be very wide\n"
 		assert.Equal(t, want, tst.Stderr())
 	})
 
@@ -85,7 +85,7 @@ func Test_confirm(t *testing.T) {
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.True(t, have)
-		assert.Contain(t, "the map will be very wide", tst.Stderr())
+		assert.Contain(t, "the diagram will be very wide", tst.Stderr())
 	})
 }
 

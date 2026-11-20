@@ -162,7 +162,7 @@ func (rnd *Renderer) Render(
 	rnd.modules(buf, grp, lay, ids, cls, bdg)
 	buf.WriteString("</svg>\n")
 	if _, err := dst.Write(buf.Bytes()); err != nil {
-		return fmt.Errorf("write map: %w", err)
+		return fmt.Errorf("write diagram: %w", err)
 	}
 	return nil
 }
