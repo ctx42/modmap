@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/ctx42/ring/pkg/ring"
@@ -293,6 +294,32 @@ func Test_runPlan(t *testing.T) {
 		assert.Equal(t, string(wJSON)+"\n", tst.Stdout())
 		assert.NotContain(t, "github.com/customer/z", tst.Stdout())
 
+		assert.Contain(t, "graph has 6 modules", tst.Stderr())
+	})
+
+	t.Run("plan spans groups of two files", func(t *testing.T) {
+		// --- Given ---
+		cnf, _ := planGroups(t)
+		dir := filepath.Dir(cnf)
+		yml := oskit.ReadFileStr(t, cnf)
+		head, work, _ := strings.Cut(yml, "  - name: work\n")
+		pa := oskit.Create(t, head, dir, "a.yaml")
+		pb := oskit.Create(t, "groups:\n  - name: work\n"+work, dir, "b.yaml")
+		cfg := &config{plan: []string{"github.com/ctx42/testing"}}
+		tst := ringtest.New(t).WetStdout().WetStderr()
+		rng := tst.Ring()
+		must.Nil(runPlan(t.Context(), rng, cfg, must.Value(conf.Load(cnf))))
+		want := tst.Stdout()
+		tst.ResetStdout()
+		fil := must.Value(conf.Load(pa, pb))
+
+		// --- When ---
+		err := runPlan(t.Context(), rng, cfg, fil)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, want, tst.Stdout())
+		assert.Contain(t, `"group": "work"`, tst.Stdout())
 		assert.Contain(t, "graph has 6 modules", tst.Stderr())
 	})
 
@@ -763,6 +790,32 @@ func Test_runPlan(t *testing.T) {
 }
 
 func Test_runModules(t *testing.T) {
+	t.Run("modules of two files", func(t *testing.T) {
+		// --- Given ---
+		cnf, _ := planGroups(t)
+		dir := filepath.Dir(cnf)
+		yml := oskit.ReadFileStr(t, cnf)
+		head, work, _ := strings.Cut(yml, "  - name: work\n")
+		pa := oskit.Create(t, head, dir, "a.yaml")
+		pb := oskit.Create(t, "groups:\n  - name: work\n"+work, dir, "b.yaml")
+		tst := ringtest.New(t).WetStdout().WetStderr()
+		rng := tst.Ring()
+		must.Nil(runModules(t.Context(), rng, must.Value(conf.Load(cnf))))
+		want := tst.Stdout()
+		tst.ResetStdout()
+		fil := must.Value(conf.Load(pa, pb))
+
+		// --- When ---
+		err := runModules(t.Context(), rng, fil)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, want, tst.Stdout())
+		assert.Contain(t, `"group": "ctx42"`, tst.Stdout())
+		assert.Contain(t, `"group": "work"`, tst.Stdout())
+		assert.Contain(t, "graph has 6 modules", tst.Stderr())
+	})
+
 	t.Run("modules every group keeps", func(t *testing.T) {
 		// --- Given ---
 		cnf, src := planGroups(t)

@@ -5,10 +5,13 @@ package conf
 
 import (
 	"io/fs"
+	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/ctx42/testing/pkg/assert"
+	"github.com/ctx42/testing/pkg/must"
+	"github.com/ctx42/testkit/pkg/oskit"
 
 	"github.com/ctx42/modmap/pkg/mod"
 )
@@ -79,7 +82,7 @@ func Test_Load(t *testing.T) {
 		have, err := Load(pth)
 
 		// --- Then ---
-		assert.ErrorContain(t, "parse configuration", err)
+		assert.ErrorContain(t, "parse "+pth+": ", err)
 		assert.Nil(t, have)
 	})
 
@@ -115,7 +118,7 @@ func Test_Load(t *testing.T) {
 		have, err := Load(pth)
 
 		// --- Then ---
-		assert.ErrorRegexp(t, "^parse configuration: .*out", err)
+		assert.ErrorRegexp(t, "^parse "+pth+": .*out", err)
 		assert.Nil(t, have)
 	})
 
@@ -134,7 +137,7 @@ func Test_Load(t *testing.T) {
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrMapsKey, err)
-		want := "parse configuration: maps was renamed to groups"
+		want := "parse " + pth + ": maps was renamed to groups"
 		assert.ErrorEqual(t, want, err)
 		assert.Nil(t, have)
 	})
@@ -173,7 +176,7 @@ func Test_Load(t *testing.T) {
 		have, err := Load(pth)
 
 		// --- Then ---
-		assert.ErrorRegexp(t, "^parse configuration: .*exlude", err)
+		assert.ErrorRegexp(t, "^parse "+pth+": .*exlude", err)
 		assert.Nil(t, have)
 	})
 
@@ -190,6 +193,151 @@ func Test_Load(t *testing.T) {
 		assert.Nil(t, have)
 	})
 
+	t.Run("files merge in the order given", func(t *testing.T) {
+		// --- Given ---
+		pa := writeConf(t, ""+
+			"out: a.svg\n"+
+			"groups:\n"+
+			"  - {name: a1, dirs: [src]}\n"+
+			"  - {name: a2, dirs: [/a2]}\n", t.TempDir())
+		pb := writeConf(t, ""+
+			"groups:\n"+
+			"  - {name: b1, dirs: [src]}\n", t.TempDir())
+
+		// --- When ---
+		have, err := Load(pa, pb)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"a1", "a2", "b1"}, have.Names())
+		wDirs := []string{filepath.Join(filepath.Dir(pa), "src")}
+		assert.Equal(t, wDirs, have.Groups[0].Dirs)
+		wDirs = []string{filepath.Join(filepath.Dir(pb), "src")}
+		assert.Equal(t, wDirs, have.Groups[2].Dirs)
+		assert.Equal(t, filepath.Join(filepath.Dir(pa), "a.svg"), have.Out)
+		assert.Equal(t, pa, have.OutFrom)
+		assert.Empty(t, have.OutIgnored)
+	})
+
+	t.Run("the last output wins", func(t *testing.T) {
+		// --- Given ---
+		pa := writeConf(
+			t,
+			"out: a.svg\ngroups: [{name: a, dirs: [/a]}]\n",
+			t.TempDir(),
+		)
+		pb := writeConf(
+			t,
+			"out: b.svg\ngroups: [{name: b, dirs: [/b]}]\n",
+			t.TempDir(),
+		)
+		pc := writeConf(t, "groups: [{name: c, dirs: [/c]}]\n", t.TempDir())
+
+		// --- When ---
+		have, err := Load(pa, pb, pc)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, filepath.Join(filepath.Dir(pb), "b.svg"), have.Out)
+		assert.Equal(t, pb, have.OutFrom)
+		assert.Equal(t, []string{pa}, have.OutIgnored)
+	})
+
+	t.Run("error - no file", func(t *testing.T) {
+		// --- When ---
+		have, err := Load()
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrNoFiles, err)
+		assert.Nil(t, have)
+	})
+
+	t.Run("error - no output in any file", func(t *testing.T) {
+		// --- Given ---
+		pa := writeConf(t, "groups: [{name: a, dirs: [/a]}]\n", t.TempDir())
+		pb := writeConf(t, "groups: [{name: b, dirs: [/b]}]\n", t.TempDir())
+
+		// --- When ---
+		have, err := Load(pa, pb)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrNoOut, err)
+		assert.ErrorEqual(t, "no output file ("+pa+", "+pb+")", err)
+		assert.Nil(t, have)
+	})
+
+	t.Run("error - group name in two files", func(t *testing.T) {
+		// --- Given ---
+		pa := writeConf(
+			t,
+			"out: a.svg\ngroups: [{name: x, dirs: [/a]}]\n",
+			t.TempDir(),
+		)
+		pb := writeConf(t, "groups: [{name: x, dirs: [/b]}]\n", t.TempDir())
+
+		// --- When ---
+		have, err := Load(pa, pb)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrDupName, err)
+		want := "duplicate group name: x (" + pa + ", " + pb + ")"
+		assert.ErrorEqual(t, want, err)
+		assert.Nil(t, have)
+	})
+
+	t.Run("error - file with no groups beside others", func(t *testing.T) {
+		// --- Given ---
+		pa := writeConf(
+			t,
+			"out: a.svg\ngroups: [{name: a, dirs: [/a]}]\n",
+			t.TempDir(),
+		)
+		pb := writeConf(t, "groups: []\n", t.TempDir())
+
+		// --- When ---
+		have, err := Load(pa, pb)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrNoGroups, err)
+		assert.ErrorEqual(t, "validate "+pb+": no groups declared", err)
+		assert.Nil(t, have)
+	})
+
+	t.Run("error - same file twice", func(t *testing.T) {
+		// --- Given ---
+		pth := writeConf(
+			t,
+			"out: a.svg\ngroups: [{name: a, dirs: [/a]}]\n",
+			t.TempDir(),
+		)
+
+		// --- When ---
+		have, err := Load(pth, pth)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrTwice, err)
+		assert.ErrorEqual(t, "configuration "+pth+" given twice", err)
+		assert.Nil(t, have)
+	})
+
+	t.Run("error - same file through a symbolic link", func(t *testing.T) {
+		// --- Given ---
+		pth := writeConf(
+			t,
+			"out: a.svg\ngroups: [{name: a, dirs: [/a]}]\n",
+			t.TempDir(),
+		)
+		lnk := filepath.Join(t.TempDir(), "link.yaml")
+		must.Nil(os.Symlink(pth, lnk))
+
+		// --- When ---
+		have, err := Load(pth, lnk)
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrTwice, err)
+		assert.ErrorEqual(t, "configuration "+lnk+" given twice", err)
+		assert.Nil(t, have)
+	})
 }
 
 func Test_Config_Select(t *testing.T) {
@@ -281,7 +429,6 @@ func Test_Config_validate_tabular(t *testing.T) {
 		want   error
 	}{
 		{"no groups", "/out.svg", nil, ErrNoGroups},
-		{"no output", "", []Group{valid}, ErrNoOut},
 		{"no name", "/out.svg", []Group{{Dirs: []string{"/src"}}}, ErrNoName},
 		{"duplicate name", "/out.svg", []Group{valid, valid}, ErrDupName},
 		{"no dirs", "/out.svg", []Group{{Name: "a"}}, ErrNoDirs},
@@ -355,6 +502,50 @@ func Test_Config_resolve(t *testing.T) {
 
 		// --- Then ---
 		assert.Equal(t, "", cfg.Out)
+	})
+}
+
+func Test_distinct(t *testing.T) {
+	t.Run("different files", func(t *testing.T) {
+		// --- Given ---
+		dir := t.TempDir()
+		pa := writeConf(t, "", oskit.MkdirAll(t, dir, "a"))
+		pb := writeConf(t, "", oskit.MkdirAll(t, dir, "b"))
+
+		// --- When ---
+		err := distinct([]string{pa, pb})
+
+		// --- Then ---
+		assert.NoError(t, err)
+	})
+
+	t.Run("missing files compare as given", func(t *testing.T) {
+		// --- When ---
+		err := distinct([]string{"/nope/a.yaml", "/nope/b.yaml"})
+
+		// --- Then ---
+		assert.NoError(t, err)
+	})
+
+	t.Run("error - uncleaned path to the same file", func(t *testing.T) {
+		// --- Given ---
+		pth := writeConf(t, "", t.TempDir())
+		dup := filepath.Dir(pth) + "/./" + filepath.Base(pth)
+
+		// --- When ---
+		err := distinct([]string{pth, dup})
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrTwice, err)
+		assert.ErrorEqual(t, "configuration "+dup+" given twice", err)
+	})
+
+	t.Run("error - missing file twice", func(t *testing.T) {
+		// --- When ---
+		err := distinct([]string{"/nope/a.yaml", "/nope/a.yaml"})
+
+		// --- Then ---
+		assert.ErrorIs(t, ErrTwice, err)
 	})
 }
 

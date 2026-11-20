@@ -22,7 +22,7 @@ import (
 // run generates the image the configuration asks for: the diagram described
 // by the options, or the groups the configuration file selects, side by side.
 func run(ctx context.Context, rng *ring.Ring, cfg *config) error {
-	if cfg.conf == "" {
+	if len(cfg.confs) == 0 {
 		spc := spec{
 			Dirs:   cfg.roots,
 			Filter: mod.NewFilter(cfg.include, cfg.exclude),
@@ -31,7 +31,7 @@ func run(ctx context.Context, rng *ring.Ring, cfg *config) error {
 		return generate(ctx, rng, cfg, spc)
 	}
 
-	fil, err := conf.Load(cfg.conf)
+	fil, err := conf.Load(cfg.confs...)
 	if err != nil {
 		return err
 	}
@@ -44,6 +44,9 @@ func run(ctx context.Context, rng *ring.Ring, cfg *config) error {
 	groups, err := fil.Select(cfg.names)
 	if err != nil {
 		return err
+	}
+	if !cfg.web && len(fil.OutIgnored) > 0 {
+		logger(rng)("using the output of %s: %s", fil.OutFrom, fil.Out)
 	}
 	return generate(ctx, rng, cfg, combine(fil.Out, groups))
 }

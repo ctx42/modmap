@@ -17,7 +17,7 @@ const (
 	usgInclude = "render only modules matching the glob (repeatable)"
 	usgExclude = "never render modules matching the glob (repeatable)"
 	usgOut     = "path of the SVG file to write"
-	usgConf    = "path of the YAML configuration file"
+	usgConf    = "path of a YAML configuration file (repeatable)"
 	usgWeb     = "open the diagram in a browser instead of writing it"
 	usgYes     = "do not ask for confirmation on wide levels"
 	usgPlan    = "print the update plan of the changed module (repeatable)"
@@ -44,9 +44,10 @@ type config struct {
 	// required unless the configuration file is used.
 	out string
 
-	// Absolute path of the YAML configuration file. Set by the "--config"
-	// option. When set, it is the only source of directories and globs.
-	conf string
+	// Absolute paths of the YAML configuration files, in the order given.
+	// Set by the repeatable "--config" option. When set, the files are the
+	// only source of directories and globs.
+	confs []string
 
 	// Names of the configuration file groups to draw, as columns from left
 	// to right. An empty list draws every group the file declares. It stays
@@ -110,7 +111,10 @@ func (cfg *config) flags() func() {
 		return appendGlob(&cfg.exclude, glob)
 	})
 	fOut := cfg.fs.StringSL("out", "o", "", usgOut)
-	fConf := cfg.fs.StringSL("config", "c", "", usgConf)
+	cfg.fs.FuncSL("config", "c", usgConf, func(pth string) error {
+		cfg.confs = append(cfg.confs, pth)
+		return nil
+	})
 	fWeb := cfg.fs.Bool("web", false, usgWeb)
 	fYes := cfg.fs.BoolSL("yes", "y", false, usgYes)
 	cfg.fs.Func("plan", usgPlan, func(pth string) error {
@@ -123,7 +127,6 @@ func (cfg *config) flags() func() {
 
 	return func() {
 		cfg.out = *fOut
-		cfg.conf = *fConf
 		cfg.web = *fWeb
 		cfg.yes = *fYes
 		cfg.modules = *fModules
@@ -155,7 +158,7 @@ func (cfg *config) parse(args []string) error {
 	if len(cfg.plan) > 0 && cfg.web {
 		return errPlanWeb
 	}
-	if len(cfg.plan) > 0 && cfg.conf == "" {
+	if len(cfg.plan) > 0 && len(cfg.confs) == 0 {
 		return errPlanConf
 	}
 	if cfg.lag && len(cfg.plan) == 0 {
@@ -164,10 +167,10 @@ func (cfg *config) parse(args []string) error {
 	if cfg.modules && (len(cfg.plan) > 0 || cfg.web) {
 		return errModulesOnly
 	}
-	if cfg.modules && cfg.conf == "" {
+	if cfg.modules && len(cfg.confs) == 0 {
 		return errModulesConf
 	}
-	if cfg.conf != "" {
+	if len(cfg.confs) > 0 {
 		return cfg.parseConf(wd)
 	}
 	return cfg.parseDir(wd)
@@ -179,7 +182,9 @@ func (cfg *config) parseConf(wd string) error {
 	if cfg.out != "" || len(cfg.include)+len(cfg.exclude) > 0 {
 		return errConfOnly
 	}
-	cfg.conf = abs(wd, cfg.conf)
+	for idx, pth := range cfg.confs {
+		cfg.confs[idx] = abs(wd, pth)
+	}
 	cfg.names = cfg.fs.Args()
 	if len(cfg.plan) > 0 && len(cfg.names) > 0 {
 		return errPlanGroup
@@ -217,10 +222,10 @@ func (cfg *config) help() string {
 		"Usage:\n" +
 		"  %[1]s [options] -o <file.svg> <dir>\n" +
 		"  %[1]s [options] --web <dir>\n" +
-		"  %[1]s -c <config.yaml> [group...]\n" +
-		"  %[1]s --web -c <config.yaml> [group...]\n" +
-		"  %[1]s -c <config.yaml> --plan <module>... [--lag]\n" +
-		"  %[1]s -c <config.yaml> --modules\n" +
+		"  %[1]s -c <config.yaml>... [group...]\n" +
+		"  %[1]s --web -c <config.yaml>... [group...]\n" +
+		"  %[1]s -c <config.yaml>... --plan <module>... [--lag]\n" +
+		"  %[1]s -c <config.yaml>... --modules\n" +
 		"\n" +
 		"Options:\n" +
 		"%[2]s"

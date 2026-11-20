@@ -176,6 +176,22 @@ filters, and the output path, so `--include`, `--exclude`, and `-o`
 cannot be combined with `-c`. See
 [modmap.example.yaml](modmap.example.yaml), which documents every key.
 
+Repeat `-c` to merge several files into one set of groups, such as a shared
+file and a project file:
+
+```shell
+modmap -c base.yaml -c project.yaml
+```
+
+The groups of all files act as if one file declared them in the order given:
+the columns follow the `-c` order, then the order inside each file, and
+`--plan` and `--modules` cover the groups of every file. A group name may
+appear in one file only, and every file has to declare at least one group. Each
+file resolves its relative paths against its own directory. The `out` of the
+last file that sets one wins; at least one file has to set it, and when more
+than one does, the run logs which file it used. Giving the same file twice is
+an error, and every error names the file it comes from.
+
 ### Planning an update
 
 `--plan` prints, instead of drawing anything, the update plan of the changed

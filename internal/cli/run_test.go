@@ -72,7 +72,7 @@ func Test_run(t *testing.T) {
 	t.Run("every configured group in one image", func(t *testing.T) {
 		// --- Given ---
 		cnf := crossGroups(t)
-		cfg := &config{conf: cnf}
+		cfg := &config{confs: []string{cnf}}
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 
@@ -93,10 +93,67 @@ func Test_run(t *testing.T) {
 		assert.Contain(t, "graph has 2 modules", tst.Stderr())
 	})
 
+	t.Run("groups of two files in one diagram", func(t *testing.T) {
+		// --- Given ---
+		cnf := crossGroups(t)
+		dir := filepath.Dir(cnf)
+		yml := oskit.ReadFileStr(t, cnf)
+		head, work, _ := strings.Cut(yml, "  - name: work\n")
+		oskit.Create(t, head, dir, "a.yaml")
+		oskit.Create(t, "groups:\n  - name: work\n"+work, dir, "b.yaml")
+		confs := []string{
+			filepath.Join(dir, "a.yaml"),
+			filepath.Join(dir, "b.yaml"),
+		}
+		cfg := &config{confs: confs}
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+
+		// --- When ---
+		err := run(t.Context(), rng, cfg)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		doc := oskit.ReadFileStr(t, dir, "all.svg")
+		assert.Contain(t, `data-module="github.com/ctx42/testing"`, doc)
+		assert.Contain(t, `data-module="github.com/customer/a"`, doc)
+		assert.Contain(t, ">ctx42</text>", doc)
+		assert.Contain(t, ">work</text>", doc)
+
+		assert.NotContain(t, "using the output of", tst.Stderr())
+	})
+
+	t.Run("the output of the last file wins", func(t *testing.T) {
+		// --- Given ---
+		cnf := crossGroups(t)
+		dir := filepath.Dir(cnf)
+		last := oskit.Create(t, ""+
+			"out: last.svg\n"+
+			"groups: [{name: other, dirs: ["+t.TempDir()+"]}]\n",
+			t.TempDir(), "last.yaml",
+		)
+		cfg := &config{confs: []string{cnf, last}}
+		tst := ringtest.New(t).WetStderr()
+		rng := tst.Ring()
+
+		// --- When ---
+		err := run(t.Context(), rng, cfg)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.False(t, oskit.PathExists(t, dir, "all.svg"))
+		doc := oskit.ReadFileStr(t, filepath.Dir(last), "last.svg")
+		assert.Contain(t, `data-module="github.com/customer/a"`, doc)
+
+		out := filepath.Join(filepath.Dir(last), "last.svg")
+		want := "using the output of " + last + ": " + out
+		assert.Contain(t, want, tst.Stderr())
+	})
+
 	t.Run("only the named group is drawn", func(t *testing.T) {
 		// --- Given ---
 		cnf := crossGroups(t)
-		cfg := &config{conf: cnf, names: []string{"ctx42"}}
+		cfg := &config{confs: []string{cnf}, names: []string{"ctx42"}}
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 
@@ -116,7 +173,7 @@ func Test_run(t *testing.T) {
 	t.Run("a requirement crossing groups is an edge", func(t *testing.T) {
 		// --- Given ---
 		cnf := crossGroups(t)
-		cfg := &config{conf: cnf, names: []string{"ctx42", "work"}}
+		cfg := &config{confs: []string{cnf}, names: []string{"ctx42", "work"}}
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 
@@ -147,7 +204,7 @@ func Test_run(t *testing.T) {
 	t.Run("columns follow the named order", func(t *testing.T) {
 		// --- Given ---
 		cnf := crossGroups(t)
-		cfg := &config{conf: cnf, names: []string{"work", "ctx42"}}
+		cfg := &config{confs: []string{cnf}, names: []string{"work", "ctx42"}}
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 
@@ -174,7 +231,7 @@ func Test_run(t *testing.T) {
 		ctl, trm := openPTY(t)
 		must.Value(ctl.WriteString("n\n"))
 
-		cfg := &config{conf: cnf}
+		cfg := &config{confs: []string{cnf}}
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 		rng.SetStdin(trm)
@@ -194,7 +251,7 @@ func Test_run(t *testing.T) {
 		// --- Given ---
 		cnf := wideGroups(t)
 		_, trm := openPTY(t)
-		cfg := &config{conf: cnf, yes: true}
+		cfg := &config{confs: []string{cnf}, yes: true}
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 		rng.SetStdin(trm)
@@ -216,7 +273,7 @@ func Test_run(t *testing.T) {
 		t.Setenv("TMPDIR", tmp)
 		var opened string
 		cfg := &config{
-			conf:   cnf,
+			confs:  []string{cnf},
 			web:    true,
 			opener: func(url string) error { opened = url; return nil },
 		}
@@ -244,7 +301,7 @@ func Test_run(t *testing.T) {
 		cnf := crossGroups(t)
 		t.Setenv("TMPDIR", tmp)
 		cfg := &config{
-			conf:   cnf,
+			confs:  []string{cnf},
 			names:  []string{"work", "ctx42"},
 			web:    true,
 			opener: func(string) error { return nil },
@@ -272,7 +329,7 @@ func Test_run(t *testing.T) {
 		cnf := crossGroups(t)
 		t.Setenv("TMPDIR", tmp)
 		cfg := &config{
-			conf:   cnf,
+			confs:  []string{cnf},
 			names:  []string{"ctx42"},
 			web:    true,
 			opener: func(string) error { return nil },
@@ -298,8 +355,8 @@ func Test_run(t *testing.T) {
 		// --- Given ---
 		cnf, _ := planGroups(t)
 		cfg := &config{
-			conf: cnf,
-			plan: []string{"github.com/ctx42/d"},
+			confs: []string{cnf},
+			plan:  []string{"github.com/ctx42/d"},
 		}
 		tst := ringtest.New(t).WetStdout().WetStderr()
 		rng := tst.Ring()
@@ -318,7 +375,7 @@ func Test_run(t *testing.T) {
 	t.Run("modules printed instead of a diagram", func(t *testing.T) {
 		// --- Given ---
 		cnf, _ := planGroups(t)
-		cfg := &config{conf: cnf, modules: true}
+		cfg := &config{confs: []string{cnf}, modules: true}
 		tst := ringtest.New(t).WetStdout().WetStderr()
 		rng := tst.Ring()
 
@@ -336,7 +393,7 @@ func Test_run(t *testing.T) {
 	t.Run("error - unknown group name", func(t *testing.T) {
 		// --- Given ---
 		cfg := &config{
-			conf:  crossGroups(t),
+			confs: []string{crossGroups(t)},
 			names: []string{"three"},
 		}
 		rng := ringtest.New(t).Ring()
@@ -350,7 +407,7 @@ func Test_run(t *testing.T) {
 
 	t.Run("error - configuration cannot be read", func(t *testing.T) {
 		// --- Given ---
-		cfg := &config{conf: filepath.Join(t.TempDir(), "nope.yaml")}
+		cfg := &config{confs: []string{filepath.Join(t.TempDir(), "nope.yaml")}}
 		rng := ringtest.New(t).Ring()
 
 		// --- When ---
@@ -368,7 +425,7 @@ func Test_run(t *testing.T) {
 			"groups:\n"+
 			"  - name: one\n"+
 			"    dirs: ["+gone+"]\n", t.TempDir(), "modmap.yaml")
-		cfg := &config{conf: cnf}
+		cfg := &config{confs: []string{cnf}}
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
 

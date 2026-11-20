@@ -41,6 +41,12 @@ var (
 	// ErrUnkGroup is returned when a requested group is not declared.
 	ErrUnkGroup = errors.New("unknown group")
 
+	// ErrNoFiles is returned when no configuration file is given.
+	ErrNoFiles = errors.New("no configuration file")
+
+	// ErrTwice is returned when one configuration file is given twice.
+	ErrTwice = errors.New("given twice")
+
 	// ErrMapsKey is returned for a configuration file using the "maps" key,
 	// which was renamed to "groups".
 	ErrMapsKey = errors.New("maps was renamed to groups")
@@ -70,29 +76,77 @@ type Config struct {
 
 	// Groups holds the groups the file declares.
 	Groups []Group `yaml:"groups"`
+
+	// OutFrom is the path of the configuration file Out comes from.
+	OutFrom string `yaml:"-"`
+
+	// OutIgnored holds the paths of the configuration files whose output
+	// a later file replaced, in the order given.
+	OutIgnored []string `yaml:"-"`
 }
 
-// Load reads the configuration file at pth. The relative directory and output
-// paths it holds are resolved against the directory of the file itself. A key
-// the configuration does not define is an error, so is an "out" key on a group.
-func Load(pth string) (*Config, error) {
-	data, err := os.ReadFile(pth) //nolint:gosec
-	if err != nil {
-		return nil, fmt.Errorf("read configuration: %w", err)
+// Load reads the configuration files at pths and merges them, in the order
+// given, into one configuration holding the groups of every file. A group name
+// declared in two files is an error. Out comes from the last file setting it,
+// and at least one file has to. The same file given twice, through a symbolic
+// link included, is an error. Every file is read as [Config.load] reads it.
+func Load(pths ...string) (*Config, error) {
+	if len(pths) == 0 {
+		return nil, ErrNoFiles
+	}
+	if err := distinct(pths); err != nil {
+		return nil, err
 	}
 	cfg := &Config{}
+	owners := make(map[string]string)
+	var outs []string
+	for _, pth := range pths {
+		fil := &Config{}
+		if err := fil.load(pth); err != nil {
+			return nil, err
+		}
+		for _, grp := range fil.Groups {
+			if prev, ok := owners[grp.Name]; ok {
+				const format = "%w: %s (%s, %s)"
+				return nil, fmt.Errorf(format, ErrDupName, grp.Name, prev, pth)
+			}
+			owners[grp.Name] = pth
+		}
+		cfg.Groups = append(cfg.Groups, fil.Groups...)
+		if fil.Out != "" {
+			cfg.Out = fil.Out
+			outs = append(outs, pth)
+		}
+	}
+	if len(outs) == 0 {
+		return nil, fmt.Errorf("%w (%s)", ErrNoOut, strings.Join(pths, ", "))
+	}
+	cfg.OutFrom = outs[len(outs)-1]
+	cfg.OutIgnored = outs[:len(outs)-1]
+	return cfg, nil
+}
+
+// load reads the configuration file at pth into the configuration. The
+// relative directory and output paths it holds are resolved against the
+// directory of the file itself. A key the configuration does not define is an
+// error, so is an "out" key on a group. Every error names the file.
+func (cfg *Config) load(pth string) error {
+	data, err := os.ReadFile(pth) //nolint:gosec
+	if err != nil {
+		return fmt.Errorf("read configuration: %w", err)
+	}
 	opt := yaml.DisallowUnknownField()
 	if err = yaml.UnmarshalWithOptions(data, cfg, opt); err != nil {
 		if hasKey(data, "maps") {
 			err = ErrMapsKey
 		}
-		return nil, fmt.Errorf("parse configuration: %w", err)
+		return fmt.Errorf("parse %s: %w", pth, err)
 	}
 	cfg.resolve(filepath.Dir(pth))
 	if err = cfg.validate(); err != nil {
-		return nil, fmt.Errorf("validate %s: %w", pth, err)
+		return fmt.Errorf("validate %s: %w", pth, err)
 	}
-	return cfg, nil
+	return nil
 }
 
 // Select returns the named groups in the order they are named, or every group
@@ -133,9 +187,6 @@ func (cfg *Config) Names() []string {
 func (cfg *Config) validate() error {
 	if len(cfg.Groups) == 0 {
 		return ErrNoGroups
-	}
-	if cfg.Out == "" {
-		return ErrNoOut
 	}
 	names := make(map[string]bool, len(cfg.Groups))
 	for idx, grp := range cfg.Groups {
@@ -183,6 +234,25 @@ func hasKey(data []byte, key string) bool {
 	}
 	_, ok := doc[key]
 	return ok
+}
+
+// distinct returns an error wrapping [ErrTwice] naming the first path in
+// pths that leads to the same file as a path before it. Paths are compared
+// with their symbolic links resolved; a path that cannot be resolved, a
+// missing file for one, is compared as it is.
+func distinct(pths []string) error {
+	seen := make(map[string]bool, len(pths))
+	for _, pth := range pths {
+		key := filepath.Clean(pth)
+		if res, err := filepath.EvalSymlinks(pth); err == nil {
+			key = res
+		}
+		if seen[key] {
+			return fmt.Errorf("configuration %s %w", pth, ErrTwice)
+		}
+		seen[key] = true
+	}
+	return nil
 }
 
 // absPath returns pth as a clean absolute path, resolving a relative one

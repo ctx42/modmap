@@ -56,7 +56,8 @@ func Test_config_flags(t *testing.T) {
 		cfg := &config{}
 		apply := cfg.flags()
 		must.Nil(cfg.fs.Parse([]string{
-			"-i", "a/*", "-e", "b/*", "-o", "out.svg", "-c", "m.yaml",
+			"-i", "a/*", "-e", "b/*", "-o", "out.svg",
+			"-c", "m.yaml", "-c", "n.yaml",
 			"--web", "-y", "--plan", "example.com/a", "--plan", "example.com/b",
 			"--lag", "--modules", "-h",
 		}))
@@ -68,7 +69,7 @@ func Test_config_flags(t *testing.T) {
 		assert.Equal(t, []string{"a/*"}, cfg.include)
 		assert.Equal(t, []string{"b/*"}, cfg.exclude)
 		assert.Equal(t, "out.svg", cfg.out)
-		assert.Equal(t, "m.yaml", cfg.conf)
+		assert.Equal(t, []string{"m.yaml", "n.yaml"}, cfg.confs)
 		assert.True(t, cfg.web)
 		assert.True(t, cfg.yes)
 		assert.Equal(t, []string{"example.com/a", "example.com/b"}, cfg.plan)
@@ -125,7 +126,7 @@ func Test_config_parse(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, "/etc/modmap.yaml", cfg.conf)
+		assert.Equal(t, []string{"/etc/modmap.yaml"}, cfg.confs)
 		assert.Equal(t, []string{"ctx42", "all"}, cfg.names)
 		assert.Nil(t, cfg.roots)
 	})
@@ -433,8 +434,21 @@ func Test_config_parseConf(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, "/wd/modmap.yaml", cfg.conf)
+		assert.Equal(t, []string{"/wd/modmap.yaml"}, cfg.confs)
 		assert.Equal(t, []string{"a", "b"}, cfg.names)
+	})
+
+	t.Run("several files resolved in order", func(t *testing.T) {
+		// --- Given ---
+		cfg := parsedConfig(t, "-c", "b.yaml", "--config", "/a.yaml", "x")
+
+		// --- When ---
+		err := cfg.parseConf("/wd")
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"/wd/b.yaml", "/a.yaml"}, cfg.confs)
+		assert.Equal(t, []string{"x"}, cfg.names)
 	})
 
 	t.Run("web with one group", func(t *testing.T) {
@@ -446,7 +460,7 @@ func Test_config_parseConf(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, "/m.yaml", cfg.conf)
+		assert.Equal(t, []string{"/m.yaml"}, cfg.confs)
 		assert.Equal(t, []string{"a"}, cfg.names)
 	})
 
@@ -595,11 +609,13 @@ func Test_config_help(t *testing.T) {
 
 	// --- Then ---
 	assert.Contain(t, "modmap [options] -o <file.svg> <dir>", have)
-	assert.Contain(t, "modmap -c <config.yaml> [group...]", have)
-	assert.Contain(t, "modmap --web -c <config.yaml> [group...]", have)
-	wPlan := "modmap -c <config.yaml> --plan <module>... [--lag]\n"
+	assert.Contain(t, "modmap -c <config.yaml>... [group...]", have)
+	assert.Contain(t, "modmap --web -c <config.yaml>... [group...]", have)
+	wPlan := "modmap -c <config.yaml>... --plan <module>... [--lag]\n"
 	assert.Contain(t, wPlan, have)
-	assert.Contain(t, "modmap -c <config.yaml> --modules\n", have)
+	assert.Contain(t, "modmap -c <config.yaml>... --modules\n", have)
+	wConf := "-c, --config     path of a YAML configuration file (repeatable)"
+	assert.Contain(t, wConf, have)
 	assert.Contain(t, "-i, --include", have)
 	assert.Contain(t, "-o, --out", have)
 }
