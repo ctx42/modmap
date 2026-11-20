@@ -1,3 +1,15 @@
+## v0.6.0 (Fri, 20 Nov 2026 17:42:35 UTC)
+- docs(cascade): record lessons from the 2026-10-23 cascades.
+- docs(cascade): grep every released module for pinned versions.
+- docs(cascade): record lessons on majors, removed packages and fixes.
+- docs(cascade): set the commit rules of an open session.
+- chore: remove the cascade skill.
+- feat(conf)!: rename the maps configuration key to groups.
+- feat(cli)!: rename the map field of plan output to group.
+- feat!: say group and diagram in messages, help and errors.
+- refactor: call configuration entries groups and the picture a diagram.
+- feat!: accept several configuration files.
+
 ## v0.5.3 (Wed, 21 Oct 2026 21:29:11 UTC)
 - docs(cascade): grep plan modules for pinned release versions.
 - chore(deps): update dependencies.
