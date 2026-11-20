@@ -3,7 +3,7 @@
 
 package graph
 
-// Node represents a module drawn on the map.
+// Node represents a module drawn on the diagram.
 type Node struct {
 	// Path is the module path.
 	Path string

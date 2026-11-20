@@ -115,7 +115,7 @@ func Test_config_parse(t *testing.T) {
 		assert.Equal(t, []string{"*/internal"}, cfg.exclude)
 	})
 
-	t.Run("config mode collects map names", func(t *testing.T) {
+	t.Run("config mode collects group names", func(t *testing.T) {
 		// --- Given ---
 		args := []string{"-c", "/etc/modmap.yaml", "ctx42", "all"}
 		cfg := &config{}
@@ -212,7 +212,7 @@ func Test_config_parse(t *testing.T) {
 		assert.Equal(t, "", cfg.out)
 	})
 
-	t.Run("web option names one configured map", func(t *testing.T) {
+	t.Run("web option names one configured group", func(t *testing.T) {
 		// --- Given ---
 		args := []string{"--web", "-c", "/etc/modmap.yaml", "ctx42"}
 		cfg := &config{}
@@ -310,7 +310,7 @@ func Test_config_parse(t *testing.T) {
 		assert.ErrorIs(t, errLagPlan, err)
 	})
 
-	t.Run("web option names no configured map", func(t *testing.T) {
+	t.Run("web option names no configured group", func(t *testing.T) {
 		// --- Given ---
 		args := []string{"--web", "-c", "/etc/modmap.yaml"}
 		cfg := &config{}
@@ -324,7 +324,7 @@ func Test_config_parse(t *testing.T) {
 		assert.Empty(t, cfg.names)
 	})
 
-	t.Run("web option names several configured maps", func(t *testing.T) {
+	t.Run("web option names several configured groups", func(t *testing.T) {
 		// --- Given ---
 		args := []string{"--web", "-c", "/etc/modmap.yaml", "one", "two"}
 		cfg := &config{}
@@ -437,7 +437,7 @@ func Test_config_parseConf(t *testing.T) {
 		assert.Equal(t, []string{"a", "b"}, cfg.names)
 	})
 
-	t.Run("web with one map", func(t *testing.T) {
+	t.Run("web with one group", func(t *testing.T) {
 		// --- Given ---
 		cfg := parsedConfig(t, "--web", "-c", "/m.yaml", "a")
 
@@ -450,7 +450,7 @@ func Test_config_parseConf(t *testing.T) {
 		assert.Equal(t, []string{"a"}, cfg.names)
 	})
 
-	t.Run("web with several maps", func(t *testing.T) {
+	t.Run("web with several groups", func(t *testing.T) {
 		// --- Given ---
 		cfg := parsedConfig(t, "--web", "-c", "/m.yaml", "a", "b")
 
@@ -462,7 +462,7 @@ func Test_config_parseConf(t *testing.T) {
 		assert.Equal(t, []string{"a", "b"}, cfg.names)
 	})
 
-	t.Run("web without map", func(t *testing.T) {
+	t.Run("web without group", func(t *testing.T) {
 		// --- Given ---
 		cfg := parsedConfig(t, "--web", "-c", "/m.yaml")
 
@@ -498,17 +498,17 @@ func Test_config_parseConf_tabular(t *testing.T) {
 			errConfOnly,
 		},
 		{
-			"error - plan with a map",
+			"error - plan with a group",
 			[]string{"-c", "m.yaml", "--plan", "example.com/a", "a"},
-			errPlanMap,
+			errPlanGroup,
 		},
 		{
-			"error - plan with two maps",
+			"error - plan with two groups",
 			[]string{"-c", "m.yaml", "--plan", "example.com/a", "a", "b"},
-			errPlanMap,
+			errPlanGroup,
 		},
 		{
-			"error - modules with a map",
+			"error - modules with a group",
 			[]string{"-c", "m.yaml", "--modules", "a"},
 			errModulesOnly,
 		},

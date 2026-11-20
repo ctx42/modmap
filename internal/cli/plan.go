@@ -33,7 +33,7 @@ type plan struct {
 	Rounds [][]planMod `json:"rounds"`
 
 	// Excluded holds the dependents the plan does not update, sorted by
-	// module path: the ones a map finding them keeps out, and the ones read
+	// module path: the ones a group finding them keeps out, and the ones read
 	// from the module cache instead of a scanned directory.
 	Excluded []planMod `json:"excluded"`
 
@@ -48,24 +48,24 @@ type planMod struct {
 	// Path is the module path.
 	Path string `json:"path"`
 
-	// Map is the name of the map that found the module on disk. It is empty
+	// Group is the name of the group that found the module on disk. It is empty
 	// for a module read from the module cache.
-	Map string `json:"group,omitempty"`
+	Group string `json:"group,omitempty"`
 
 	// Dir is the absolute path of the module directory. It is empty for a
 	// module read from the module cache.
 	Dir string `json:"dir,omitempty"`
 }
 
-// finder represents a map of the configuration file as the plan sees it.
+// finder represents a group of the configuration file as the plan sees it.
 type finder struct {
-	name string     // Name of the map.
+	name string     // Name of the group.
 	dirs []string   // Scanned directories, symbolic links resolved.
-	incl mod.Filter // Include globs of the map alone.
-	flt  mod.Filter // Include and exclude globs of the map.
+	incl mod.Filter // Include globs of the group alone.
+	flt  mod.Filter // Include and exclude globs of the group.
 }
 
-// holds reports whether one of the map directories holds dir.
+// holds reports whether one of the group directories holds dir.
 func (fnd finder) holds(dir string) bool {
 	for _, root := range fnd.dirs {
 		if within(dir, root) {
@@ -75,22 +75,22 @@ func (fnd finder) holds(dir string) bool {
 	return false
 }
 
-// finders represents the maps of the configuration file, in the order the
+// finders represents the groups of the configuration file, in the order the
 // file declares them.
 type finders []finder
 
-// newFinders returns the finders of the maps. The directories are resolved
+// newFinders returns the finders of the groups. The directories are resolved
 // the way the scanner resolves them, so the module directories it reports
 // are found below them.
-func newFinders(maps []conf.Map) finders {
-	fnds := make(finders, 0, len(maps))
-	for _, mp := range maps {
+func newFinders(groups []conf.Group) finders {
+	fnds := make(finders, 0, len(groups))
+	for _, grp := range groups {
 		fnd := finder{
-			name: mp.Name,
-			incl: mod.NewFilter(mp.Include, nil),
-			flt:  mod.NewFilter(mp.Include, mp.Exclude),
+			name: grp.Name,
+			incl: mod.NewFilter(grp.Include, nil),
+			flt:  mod.NewFilter(grp.Include, grp.Exclude),
 		}
-		for _, dir := range mp.Dirs {
+		for _, dir := range grp.Dirs {
 			if res, err := filepath.EvalSymlinks(dir); err == nil {
 				dir = res
 			}
@@ -102,8 +102,8 @@ func newFinders(maps []conf.Map) finders {
 }
 
 // filter returns the filter passing every module path the include globs of
-// any map pass. The exclude globs are left out, so a module a map keeps out
-// is still found, and reported as excluded.
+// any group pass. The exclude globs are left out, so a module a group keeps
+// out is still found, and reported as excluded.
 func (fnds finders) filter() mod.Filter {
 	flts := make([]mod.Filter, 0, len(fnds))
 	for _, fnd := range fnds {
@@ -112,13 +112,13 @@ func (fnds finders) filter() mod.Filter {
 	return mod.AnyOf(flts...)
 }
 
-// owner returns the name of the map deciding whether the module at pth, found
-// in the directory dir, takes part in the plan, and whether it does. A map
-// finds the module when one of its directories holds dir and its include
-// globs pass pth. The module takes part when a map finds it and every map
-// finding it keeps it, so one exclusion keeps it out. The name is the first
-// map keeping it out, else the first map finding it, else the first map
-// whose directories hold dir; it is empty for a module not on disk.
+// owner returns the name of the group deciding whether the module at pth,
+// found in the directory dir, takes part in the plan, and whether it does. A
+// group finds the module when one of its directories holds dir and its
+// include globs pass pth. The module takes part when a group finds it and
+// every group finding it keeps it, so one exclusion keeps it out. The name is
+// the first group keeping it out, else the first group finding it, else the
+// first group whose directories hold dir; it is empty for a module not on disk.
 func (fnds finders) owner(pth, dir string) (string, bool) {
 	if dir == "" {
 		return "", false
@@ -148,9 +148,9 @@ func (fnds finders) owner(pth, dir string) (string, bool) {
 }
 
 // runPlan prints the update plan of the changed modules to stdout as JSON.
-// The plan spans every map the configuration declares: the changed modules
+// The plan spans every group the configuration declares: the changed modules
 // and every module depending on one of them, directly or through other
-// modules. A dependent is planned when the maps finding it on disk keep it,
+// modules. A dependent is planned when the groups finding it on disk keep it,
 // and reported as excluded otherwise. Every changed module has to be planned.
 func runPlan(
 	ctx context.Context,
@@ -159,8 +159,8 @@ func runPlan(
 	fil *conf.Config,
 ) error {
 
-	fnds := newFinders(fil.Maps)
-	spc := combine(fil.Out, fil.Maps)
+	fnds := newFinders(fil.Groups)
+	spc := combine(fil.Out, fil.Groups)
 	spc.Filter = fnds.filter()
 	mods, grp, err := build(ctx, rng, logger(rng), spc)
 	if err != nil {
@@ -177,8 +177,8 @@ func runPlan(
 		if dir == "" {
 			return fmt.Errorf("%w: %s", errModNotOnDisk, root)
 		}
-		// The scan finds modules on disk only below the map directories,
-		// so one of the maps names the changed module.
+		// The scan finds modules on disk only below the group directories, so
+		// one of the groups names the changed module.
 		if name, ok := fnds.owner(root, dir); !ok {
 			const format = "%w: %s (group: %s)"
 			return fmt.Errorf(format, errModExcluded, root, name)
@@ -191,7 +191,7 @@ func runPlan(
 	}
 	entry := func(pth string) planMod {
 		name, _ := fnds.owner(pth, mods[pth].Dir)
-		return planMod{Path: pth, Map: name, Dir: mods[pth].Dir}
+		return planMod{Path: pth, Group: name, Dir: mods[pth].Dir}
 	}
 	cas := grp.CascadeFrom(roots, keep)
 	pln := plan{
@@ -226,12 +226,12 @@ func runPlan(
 	return nil
 }
 
-// runModules prints to stdout as JSON the modules on disk the maps keep, as
-// the plan names them, sorted by module path: every module a map finds in one
-// of its directories and every map finding it keeps.
+// runModules prints to stdout as JSON the modules on disk the groups keep, as
+// the plan names them, sorted by module path: every module a group finds in
+// one of its directories and every group finding it keeps.
 func runModules(ctx context.Context, rng *ring.Ring, fil *conf.Config) error {
-	fnds := newFinders(fil.Maps)
-	spc := combine(fil.Out, fil.Maps)
+	fnds := newFinders(fil.Groups)
+	spc := combine(fil.Out, fil.Groups)
 	spc.Filter = fnds.filter()
 	mods, _, err := build(ctx, rng, logger(rng), spc)
 	if err != nil {
@@ -241,7 +241,7 @@ func runModules(ctx context.Context, rng *ring.Ring, fil *conf.Config) error {
 	for _, pth := range slices.Sorted(maps.Keys(mods)) {
 		dir := mods[pth].Dir
 		if name, ok := fnds.owner(pth, dir); ok {
-			pms = append(pms, planMod{Path: pth, Map: name, Dir: dir})
+			pms = append(pms, planMod{Path: pth, Group: name, Dir: dir})
 		}
 	}
 	enc := json.NewEncoder(rng.Stdout())

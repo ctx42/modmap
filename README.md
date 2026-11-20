@@ -4,7 +4,7 @@
 
 # modmap
 
-Draw the modules of a Go workspace as an interactive map, so you can see
+Draw the modules of a Go workspace as an interactive diagram, so you can see
 which module has to be updated next, and in what order.
 
 ![modmap drawing the ctx42 modules](doc/modmap-ctx42.png)
@@ -22,8 +22,8 @@ draws every module one level above the modules it requires. Level 0
 holds the modules that depend on nothing, and each level above it is a
 round of updates that cannot start before the level below is done.
 
-The map is a single SVG file: no server, no build step, nothing to
-install to look at it.
+The diagram is a single SVG file: no server, no build step, nothing to install
+to look at it.
 
 ## Features
 
@@ -43,15 +43,15 @@ install to look at it.
   being drawn as something they are not.
 - One SVG file with the font embedded and the dependency data in
   `data-*` attributes; it carries no script at all.
-- `--web` opens the map in a browser, pan and zoom included, with no
-  server to stop and no file to name.
-- Several maps drawn side by side in one image, one column each, with
+- `--web` opens the diagram in a browser, pan and zoom included, with no server
+  to stop and no file to name.
+- Several groups drawn side by side in one image, one column each, with
   requirements crossing the columns lit and numbered like any other.
-- `--plan` prints the update rounds of one or more changed modules
-  across every map, with the map and directory of each module, as JSON
-  for a tool to work through.
-- `--modules` prints every module the maps keep, with its map and
-  directory, as JSON.
+- `--plan` prints the update rounds of one or more changed modules across every
+  group, with the group and directory of each module, as JSON for a tool to work
+  through.
+- `--modules` prints every module the groups keep, with its group and directory,
+  as JSON.
 - `--lag` adds to the plan how far each requirement it lifts is behind:
   the release tags and commits in between, and the breaking ones among
   them.
@@ -74,7 +74,7 @@ go build -o dist/modmap ./cmd/modmap
 
 ## Usage
 
-Map every ctx42 module found under a directory:
+Draw every ctx42 module found under a directory:
 
 ```shell
 modmap --include 'github.com/ctx42/*' -o tmp/modules.svg ~/src/ctx42
@@ -97,17 +97,17 @@ update and carry no digit.
 
 ![the update order badge up close](doc/modmap-badge.png)
 
-Four boxes of that same map up close: `testkit` pinned and reading 1,
-`mirror` and `ring` each reading 2 because neither waits for the other,
-and `xflag` dimmed and blank, having nothing to do with the change.
+Four boxes of that same diagram up close: `testkit` pinned and reading 1,
+`mirror` and `ring` each reading 2 because neither waits for the other, and
+`xflag` dimmed and blank, having nothing to do with the change.
 
-The digit is not the level. `dkigo` sits on LEVEL 2 whichever module is
-pinned, but it reads 2 when `xdef` is pinned and 3 when `testing` is:
-the level counts from the bottom of the whole map, the digit counts
-from the module you pinned.
+The digit is not the level. `dkigo` sits on LEVEL 2 whichever module is pinned,
+but it reads 2 when `xdef` is pinned and 3 when `testing` is: the level counts
+from the bottom of the whole diagram, the digit counts from the module you
+pinned.
 
-`-o` is required unless the maps come from `-c` or are opened with
-`--web`: `modmap` never writes an SVG to a terminal.
+`-o` is required unless the groups come from `-c` or are opened with `--web`:
+`modmap` never writes an SVG to a terminal.
 
 ### Filtering
 
@@ -120,59 +120,56 @@ modmap --include 'github.com/ctx42/*' \
        -o tmp/modules.svg ~/src/ctx42
 ```
 
-Without `--include`, the map is the whole dependency closure —
-third-party modules included. That is slower, because every `go.mod` in
-the closure has to come from the cache or the network, and much wider.
-`modmap` asks before rendering a level of more than 20 modules; `--yes`
-answers for it in scripts.
+Without `--include`, the diagram is the whole dependency closure — third-party
+modules included. That is slower, because every `go.mod` in the closure has to
+come from the cache or the network, and much wider. `modmap` asks before
+rendering a level of more than 20 modules; `--yes` answers for it in scripts.
 
 ### Looking without keeping
 
-`--web` opens the map in a browser instead of writing it where you say.
-The page pans with a drag, zooms with the wheel, fits again with `0`,
-and hovering and pinning work exactly as they do in the file:
+`--web` opens the diagram in a browser instead of writing it where you say. The
+page pans with a drag, zooms with the wheel, fits again with `0`, and hovering
+and pinning work exactly as they do in the file:
 
 ```shell
 modmap --web --include 'github.com/ctx42/*' ~/src/ctx42
 ```
 
-The page and the map it shows are written under the system temporary
+The page and the diagram it shows are written under the system temporary
 directory — `/tmp/modmap` on Linux — and the path of the page is
 printed. Nothing is served: the browser opens the page from disk and
 `modmap` is done, so there is no port to pick and no Ctrl-C to press.
-Every run showing the same maps rewrites the same two files, named after
+Every run showing the same groups rewrites the same two files, named after
 them, so the pages never pile up and reloading the page after a run
-shows the new map.
+shows the new diagram.
 Because the destination is not yours to pick, `--web` and `-o` cannot be
 combined; the page links the SVG written beside it when you want to keep
-the map after all.
+the diagram after all.
 
-With a configuration file, `--web` opens the same image a run would
-write — every declared map, or only the named ones — and ignores the
-file's `out` key: `modmap --web -c modmap.yaml ctx42 work`.
+With a configuration file, `--web` opens the same image a run would write —
+every declared group, or only the named ones — and ignores the file's `out` key:
+`modmap --web -c modmap.yaml ctx42 work`.
 
-### Several maps at once
+### Several groups at once
 
-A configuration file names the maps a project keeps and draws them side
-by side into the one image its `out` key names:
+A configuration file names the groups a project keeps and draws them side by
+side into the one image its `out` key names:
 
 ```shell
 modmap -c modmap.yaml
 ```
 
-Every map is a column, under its name and split from the next by a
-dashed divider, left to right in the order the file declares them.
-Naming maps draws only those, in the order named:
-`modmap -c modmap.yaml work ctx42`. Naming one draws a single column;
-every run overwrites the same file.
+Every group is a column, under its name and split from the next by a dashed
+divider, left to right in the order the file declares them. Naming groups draws
+only those, in the order named: `modmap -c modmap.yaml work ctx42`. Naming one
+draws a single column; every run overwrites the same file.
 
-The columns are one map, not several pictures: the directories of every
-map are scanned together, a module is kept when any map keeps it, and a
-module of one map requiring a module of another is an edge. The levels
-are shared, so a module sits one level above whatever it requires,
-whichever column that is in, and hovering, pinning, and the update
-order digits run across the dividers. A module is drawn once, in the
-first column whose map keeps it.
+The columns are one diagram, not several pictures: the directories of every
+group are scanned together, a module is kept when any group keeps it, and a
+module of one group requiring a module of another is an edge. The levels are
+shared, so a module sits one level above whatever it requires, whichever column
+that is in, and hovering, pinning, and the update order digits run across the
+dividers. A module is drawn once, in the first column whose group keeps it.
 
 When a configuration file is used it is the only source of directories,
 filters, and the output path, so `--include`, `--exclude`, and `-o`
@@ -181,9 +178,9 @@ cannot be combined with `-c`. See
 
 ### Planning an update
 
-`--plan` prints, instead of drawing anything, the update plan of the
-changed modules as JSON on stdout; repeat it to name more than one. The
-plan spans every map of the configuration file:
+`--plan` prints, instead of drawing anything, the update plan of the changed
+modules as JSON on stdout; repeat it to name more than one. The plan spans every
+group of the configuration file:
 
 ```shell
 modmap -c modmap.yaml --plan github.com/ctx42/testkit
@@ -235,25 +232,25 @@ modules, sorted; `module` names the changed module only when there is
 one. A changed module reaching no other changed module is in the first
 round, so a single changed module is alone there; every other module
 comes one round after the highest round module it reaches, and the
-modules of a round are sorted by module path. Each module names the map
-that found it on disk.
+modules of a round are sorted by module path. Each module names the group that
+found it on disk.
 
-A map finds a module when one of its `dirs` holds it and its `include`
-globs keep it. A dependent is planned only when every map finding it
-keeps it, so one map excluding it keeps it out. The dependents kept out
-are listed under `excluded`, as are those read from the module cache,
-which have no `group` or `dir`. A module reaching the change only through
-an excluded one is still planned, after the change.
+A group finds a module when one of its `dirs` holds it and its `include` globs
+keep it. A dependent is planned only when every group finding it keeps it, so
+one group excluding it keeps it out. The dependents kept out are listed under
+`excluded`, as are those read from the module cache, which have no `group` or
+`dir`. A module reaching the change only through an excluded one is still
+planned, after the change.
 
-Every changed module has to be found on disk and kept; a changed module
-is planned even when a map would exclude it as a dependent. `--plan`
-needs `-c`, takes no map name, and cannot be combined with `--web`.
+Every changed module has to be found on disk and kept; a changed module is
+planned even when a group would exclude it as a dependent. `--plan` needs `-c`,
+takes no group name, and cannot be combined with `--web`.
 
 ### Listing the modules
 
-`--modules` prints, instead of drawing anything, every module the maps
-keep as JSON on stdout, sorted by module path, each with the map that
-found it and its directory: the modules `--plan` can plan.
+`--modules` prints, instead of drawing anything, every module the groups keep as
+JSON on stdout, sorted by module path, each with the group that found it and its
+directory: the modules `--plan` can plan.
 
 ```shell
 modmap -c modmap.yaml --modules
@@ -269,9 +266,8 @@ modmap -c modmap.yaml --modules
 ]
 ```
 
-Modules read from the module cache are left out. `--modules` needs
-`-c`, takes no map name, and cannot be combined with `--plan` or
-`--web`.
+Modules read from the module cache are left out. `--modules` needs `-c`, takes
+no group name, and cannot be combined with `--plan` or `--web`.
 
 ### How far behind
 
@@ -353,7 +349,7 @@ group under `groups`:
 Relative paths in a configuration file resolve against the directory
 holding the file, never against the working directory.
 
-## How the map is built
+## How the diagram is built
 
 - Every `go.mod` under the scanned directories is a module, nested ones
   included. Directories whose names start with `.` or `_`, `testdata`
@@ -387,3 +383,24 @@ line are not.
 ## License
 
 Released under the MIT License — see [LICENSE.md](LICENSE.md).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

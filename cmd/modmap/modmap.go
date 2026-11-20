@@ -3,7 +3,7 @@
 
 // Command modmap is the modmap binary entry point. It scans directories for
 // Go modules, builds the graph of their dependencies, and renders it as an
-// SVG where every module sits above the modules it depends on. The map is
+// SVG where every module sits above the modules it depends on. The diagram is
 // written to a file, or opened in a browser with the "--web" option.
 package main
 

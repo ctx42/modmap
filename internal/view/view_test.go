@@ -91,7 +91,7 @@ func Test_Open(t *testing.T) {
 }
 
 func Test_write(t *testing.T) {
-	t.Run("a map with no usable title", func(t *testing.T) {
+	t.Run("a diagram with no usable title", func(t *testing.T) {
 		// --- Given ---
 		dir := filepath.Join(t.TempDir(), dirName)
 
@@ -164,7 +164,7 @@ func Test_write(t *testing.T) {
 		assert.Equal(t, "", have)
 	})
 
-	t.Run("error - map file name taken", func(t *testing.T) {
+	t.Run("error - diagram file name taken", func(t *testing.T) {
 		// --- Given ---
 		dir := t.TempDir()
 		oskit.MkdirAll(t, dir, "ctx42.svg")
@@ -178,7 +178,7 @@ func Test_write(t *testing.T) {
 		assert.False(t, oskit.PathExists(t, dir, "ctx42.html"))
 	})
 
-	t.Run("error - map page name taken", func(t *testing.T) {
+	t.Run("error - diagram page name taken", func(t *testing.T) {
 		// --- Given ---
 		dir := t.TempDir()
 		oskit.MkdirAll(t, dir, "ctx42.html")
@@ -207,7 +207,7 @@ func Test_write(t *testing.T) {
 func Test_privateDir(t *testing.T) {
 	t.Run("new directory", func(t *testing.T) {
 		// --- Given ---
-		dir := filepath.Join(t.TempDir(), "maps")
+		dir := filepath.Join(t.TempDir(), "diagrams")
 
 		// --- When ---
 		err := privateDir(dir)
@@ -337,13 +337,13 @@ func Test_html(t *testing.T) {
 	doc := []byte(`<svg id="m"><g/></svg>`)
 
 	// --- When ---
-	have, err := html("the map", "the-map.svg", doc)
+	have, err := html("the diagram", "the-diagram.svg", doc)
 
 	// --- Then ---
 	assert.NoError(t, err)
-	assert.Contain(t, "<title>the map</title>", string(have))
+	assert.Contain(t, "<title>the diagram</title>", string(have))
 	assert.Contain(t, `<svg id="m"><g/></svg>`, string(have))
-	assert.Contain(t, `href="the-map.svg"`, string(have))
+	assert.Contain(t, `href="the-diagram.svg"`, string(have))
 	assert.Contain(t, "drag to pan", string(have))
 }
 
@@ -356,8 +356,8 @@ func Test_slug_tabular(t *testing.T) {
 	}{
 		{"a plain name", "ctx42", "ctx42"},
 		{"a path", "github.com/ctx42/modmap", "github-com-ctx42-modmap"},
-		{"spaces", "the map", "the-map"},
-		{"underscores are kept", "the_map", "the_map"},
+		{"spaces", "the diagram", "the-diagram"},
+		{"underscores are kept", "the_diagram", "the_diagram"},
 		{"trimmed to what is usable", "/src/", "src"},
 		{"nothing usable", "//", defName},
 		{"empty", "", defName},
@@ -382,7 +382,7 @@ func Test_fileURL_tabular(t *testing.T) {
 		want string
 	}{
 		{"an absolute path", "/tmp/modmap/a.html", "file:///tmp/modmap/a.html"},
-		{"a space", "/tmp/the map.html", "file:///tmp/the%20map.html"},
+		{"a space", "/tmp/the diagram.html", "file:///tmp/the%20diagram.html"},
 		{"a drive letter", "C:/a.html", "file:///C:/a.html"},
 	}
 

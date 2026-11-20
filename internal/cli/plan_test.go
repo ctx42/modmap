@@ -30,10 +30,14 @@ func Test_planMod_json_tabular(t *testing.T) {
 	}{
 		{
 			"every field",
-			planMod{Path: "example.com/a", Map: "one", Dir: "/src/a"},
+			planMod{Path: "example.com/a", Group: "one", Dir: "/src/a"},
 			`{"path":"example.com/a","group":"one","dir":"/src/a"}`,
 		},
-		{"path only", planMod{Path: "example.com/a"}, `{"path":"example.com/a"}`},
+		{
+			"path only",
+			planMod{Path: "example.com/a"},
+			`{"path":"example.com/a"}`,
+		},
 	}
 
 	for _, tc := range tt {
@@ -79,7 +83,7 @@ func Test_newFinders(t *testing.T) {
 	t.Run("directories and globs", func(t *testing.T) {
 		// --- Given ---
 		dir := t.TempDir()
-		maps := []conf.Map{
+		groups := []conf.Group{
 			{
 				Name:    "ctx42",
 				Dirs:    []string{dir},
@@ -90,7 +94,7 @@ func Test_newFinders(t *testing.T) {
 		}
 
 		// --- When ---
-		have := newFinders(maps)
+		have := newFinders(groups)
 
 		// --- Then ---
 		assert.Len(t, 2, have)
@@ -109,10 +113,10 @@ func Test_newFinders(t *testing.T) {
 		dst := t.TempDir()
 		lnk := filepath.Join(t.TempDir(), "link")
 		must.Nil(os.Symlink(dst, lnk))
-		maps := []conf.Map{{Name: "one", Dirs: []string{lnk}}}
+		groups := []conf.Group{{Name: "one", Dirs: []string{lnk}}}
 
 		// --- When ---
-		have := newFinders(maps)
+		have := newFinders(groups)
 
 		// --- Then ---
 		want := []string{must.Value(filepath.EvalSymlinks(dst))}
@@ -122,10 +126,10 @@ func Test_newFinders(t *testing.T) {
 	t.Run("missing directory is kept as it is", func(t *testing.T) {
 		// --- Given ---
 		gone := filepath.Join(t.TempDir(), "gone")
-		maps := []conf.Map{{Name: "one", Dirs: []string{gone}}}
+		groups := []conf.Group{{Name: "one", Dirs: []string{gone}}}
 
 		// --- When ---
-		have := newFinders(maps)
+		have := newFinders(groups)
 
 		// --- Then ---
 		assert.Equal(t, []string{gone}, have[0].dirs)
@@ -134,7 +138,7 @@ func Test_newFinders(t *testing.T) {
 
 func Test_finders_filter(t *testing.T) {
 	// --- Given ---
-	fnds := newFinders([]conf.Map{
+	fnds := newFinders([]conf.Group{
 		{
 			Name:    "ctx42",
 			Include: []string{"github.com/ctx42/*"},
@@ -154,7 +158,7 @@ func Test_finders_filter(t *testing.T) {
 }
 
 func Test_finders_owner_tabular(t *testing.T) {
-	fnds := newFinders([]conf.Map{
+	fnds := newFinders([]conf.Group{
 		{
 			Name:    "ctx42",
 			Dirs:    []string{"/src/ctx42"},
@@ -182,41 +186,41 @@ func Test_finders_owner_tabular(t *testing.T) {
 		wKeep bool
 	}{
 		{
-			"found by one map",
+			"found by one group",
 			"github.com/customer/b",
 			"/src/work/b",
 			"work",
 			true,
 		},
 		{
-			"found by two maps",
+			"found by two groups",
 			"github.com/ctx42/ring",
 			"/src/ctx42/ring",
 			"ctx42",
 			true,
 		},
 		{
-			"excluded by one of two maps",
+			"excluded by one of two groups",
 			"github.com/ctx42/blog",
 			"/src/ctx42/blog",
 			"ctx42",
 			false,
 		},
 		{
-			"found by a map not holding the first",
+			"found by a group not holding the first",
 			"github.com/other/c",
 			"/src/work/c",
 			"wide",
 			true,
 		},
 		{
-			"held but included by no map",
+			"held but included by no group",
 			"github.com/nobody/c",
 			"/src/work/c",
 			"work",
 			false,
 		},
-		{"held by no map", "github.com/ctx42/x", "/opt/x", "", false},
+		{"held by no group", "github.com/ctx42/x", "/opt/x", "", false},
 		{"not on disk", "github.com/ctx42/x", "", "", false},
 	}
 
@@ -233,9 +237,9 @@ func Test_finders_owner_tabular(t *testing.T) {
 }
 
 func Test_runPlan(t *testing.T) {
-	t.Run("plan spans every map", func(t *testing.T) {
+	t.Run("plan spans every group", func(t *testing.T) {
 		// --- Given ---
-		cnf, src := planMaps(t)
+		cnf, src := planGroups(t)
 		fil := must.Value(conf.Load(cnf))
 		cfg := &config{plan: []string{"github.com/ctx42/testing"}}
 		tst := ringtest.New(t).WetStdout().WetStderr()
@@ -252,36 +256,36 @@ func Test_runPlan(t *testing.T) {
 			Rounds: [][]planMod{
 				{
 					{
-						Path: "github.com/ctx42/testing",
-						Map:  "ctx42",
-						Dir:  filepath.Join(src, "ctx42", "testing"),
+						Path:  "github.com/ctx42/testing",
+						Group: "ctx42",
+						Dir:   filepath.Join(src, "ctx42", "testing"),
 					},
 				},
 				{
 					{
-						Path: "github.com/ctx42/d",
-						Map:  "ctx42",
-						Dir:  filepath.Join(src, "ctx42", "d"),
+						Path:  "github.com/ctx42/d",
+						Group: "ctx42",
+						Dir:   filepath.Join(src, "ctx42", "d"),
 					},
 					{
-						Path: "github.com/customer/b",
-						Map:  "work",
-						Dir:  filepath.Join(src, "customer", "b"),
+						Path:  "github.com/customer/b",
+						Group: "work",
+						Dir:   filepath.Join(src, "customer", "b"),
 					},
 				},
 				{
 					{
-						Path: "github.com/ctx42/a",
-						Map:  "ctx42",
-						Dir:  filepath.Join(src, "ctx42", "a"),
+						Path:  "github.com/ctx42/a",
+						Group: "ctx42",
+						Dir:   filepath.Join(src, "ctx42", "a"),
 					},
 				},
 			},
 			Excluded: []planMod{
 				{
-					Path: "github.com/ctx42/blog",
-					Map:  "ctx42",
-					Dir:  filepath.Join(src, "ctx42", "blog"),
+					Path:  "github.com/ctx42/blog",
+					Group: "ctx42",
+					Dir:   filepath.Join(src, "ctx42", "blog"),
 				},
 			},
 		}
@@ -294,7 +298,7 @@ func Test_runPlan(t *testing.T) {
 
 	t.Run("two runs print the same plan", func(t *testing.T) {
 		// --- Given ---
-		cnf, _ := planMaps(t)
+		cnf, _ := planGroups(t)
 		fil := must.Value(conf.Load(cnf))
 		cfg := &config{plan: []string{"github.com/ctx42/testing"}}
 		tst := ringtest.New(t).WetStdout().WetStderr()
@@ -315,7 +319,7 @@ func Test_runPlan(t *testing.T) {
 
 	t.Run("a module without dependents is alone", func(t *testing.T) {
 		// --- Given ---
-		cnf, src := planMaps(t)
+		cnf, src := planGroups(t)
 		fil := must.Value(conf.Load(cnf))
 		cfg := &config{plan: []string{"github.com/ctx42/a"}}
 		tst := ringtest.New(t).WetStdout().WetStderr()
@@ -329,9 +333,9 @@ func Test_runPlan(t *testing.T) {
 		have := plan{}
 		must.Nil(json.Unmarshal([]byte(tst.Stdout()), &have))
 		wMod := planMod{
-			Path: "github.com/ctx42/a",
-			Map:  "ctx42",
-			Dir:  filepath.Join(src, "ctx42", "a"),
+			Path:  "github.com/ctx42/a",
+			Group: "ctx42",
+			Dir:   filepath.Join(src, "ctx42", "a"),
 		}
 		want := plan{
 			Module:   "github.com/ctx42/a",
@@ -347,7 +351,7 @@ func Test_runPlan(t *testing.T) {
 
 	t.Run("several changed modules", func(t *testing.T) {
 		// --- Given ---
-		cnf, src := planMaps(t)
+		cnf, src := planGroups(t)
 		fil := must.Value(conf.Load(cnf))
 		cfg := &config{
 			plan: []string{
@@ -371,14 +375,14 @@ func Test_runPlan(t *testing.T) {
 		assert.Equal(t, "", have.Module)
 		wFirst := []planMod{
 			{
-				Path: "github.com/ctx42/testing",
-				Map:  "ctx42",
-				Dir:  filepath.Join(src, "ctx42", "testing"),
+				Path:  "github.com/ctx42/testing",
+				Group: "ctx42",
+				Dir:   filepath.Join(src, "ctx42", "testing"),
 			},
 			{
-				Path: "github.com/customer/z",
-				Map:  "work",
-				Dir:  filepath.Join(src, "customer", "z"),
+				Path:  "github.com/customer/z",
+				Group: "work",
+				Dir:   filepath.Join(src, "customer", "z"),
 			},
 		}
 		assert.Equal(t, wFirst, have.Rounds[0])
@@ -390,7 +394,7 @@ func Test_runPlan(t *testing.T) {
 
 	t.Run("a changed module after the one it requires", func(t *testing.T) {
 		// --- Given ---
-		cnf, _ := planMaps(t)
+		cnf, _ := planGroups(t)
 		fil := must.Value(conf.Load(cnf))
 		cfg := &config{
 			plan: []string{"github.com/ctx42/a", "github.com/ctx42/testing"},
@@ -423,9 +427,9 @@ func Test_runPlan(t *testing.T) {
 		assert.Contain(t, "graph has 6 modules", tst.Stderr())
 	})
 
-	t.Run("exclusion wins over a map keeping the module", func(t *testing.T) {
+	t.Run("exclusion wins over a group keeping the module", func(t *testing.T) {
 		// --- Given ---
-		_, src := planMaps(t)
+		_, src := planGroups(t)
 		cnf := oskit.Create(t, ""+
 			"out: all.svg\n"+
 			"groups:\n"+
@@ -452,16 +456,16 @@ func Test_runPlan(t *testing.T) {
 		must.Nil(json.Unmarshal([]byte(tst.Stdout()), &have))
 		want := []planMod{
 			{
-				Path: "github.com/ctx42/blog",
-				Map:  "ctx42",
-				Dir:  filepath.Join(src, "ctx42", "blog"),
+				Path:  "github.com/ctx42/blog",
+				Group: "ctx42",
+				Dir:   filepath.Join(src, "ctx42", "blog"),
 			},
 		}
 		assert.Equal(t, want, have.Excluded)
 		wMod := planMod{
-			Path: "github.com/customer/b",
-			Map:  "wide",
-			Dir:  filepath.Join(src, "customer", "b"),
+			Path:  "github.com/customer/b",
+			Group: "wide",
+			Dir:   filepath.Join(src, "customer", "b"),
 		}
 		assert.Equal(t, wMod, have.Rounds[1][1])
 
@@ -499,8 +503,16 @@ func Test_runPlan(t *testing.T) {
 		have := plan{}
 		must.Nil(json.Unmarshal([]byte(tst.Stdout()), &have))
 		want := [][]planMod{
-			{{Path: "example.com/t", Map: "one", Dir: filepath.Join(src, "t")}},
-			{{Path: "example.com/a", Map: "one", Dir: filepath.Join(src, "a")}},
+			{{
+				Path:  "example.com/t",
+				Group: "one",
+				Dir:   filepath.Join(src, "t"),
+			}},
+			{{
+				Path:  "example.com/a",
+				Group: "one",
+				Dir:   filepath.Join(src, "a"),
+			}},
 		}
 		assert.Equal(t, want, have.Rounds)
 		assert.Equal(t, []planMod{{Path: "example.com/c"}}, have.Excluded)
@@ -508,7 +520,7 @@ func Test_runPlan(t *testing.T) {
 		assert.Contain(t, "resolving example.com/c@v1.0.0", tst.Stderr())
 	})
 
-	t.Run("error - a map directory cannot be scanned", func(t *testing.T) {
+	t.Run("error - a group directory cannot be scanned", func(t *testing.T) {
 		// --- Given ---
 		gone := filepath.Join(t.TempDir(), "gone")
 		cnf := oskit.Create(t, ""+
@@ -531,7 +543,7 @@ func Test_runPlan(t *testing.T) {
 
 	t.Run("error - one of the changed modules not found", func(t *testing.T) {
 		// --- Given ---
-		cnf, _ := planMaps(t)
+		cnf, _ := planGroups(t)
 		fil := must.Value(conf.Load(cnf))
 		cfg := &config{
 			plan: []string{"github.com/ctx42/testing", "github.com/ctx42/nope"},
@@ -550,7 +562,7 @@ func Test_runPlan(t *testing.T) {
 
 	t.Run("error - module not found", func(t *testing.T) {
 		// --- Given ---
-		cnf, _ := planMaps(t)
+		cnf, _ := planGroups(t)
 		fil := must.Value(conf.Load(cnf))
 		cfg := &config{plan: []string{"github.com/ctx42/nope"}}
 		tst := ringtest.New(t).WetStderr()
@@ -565,9 +577,9 @@ func Test_runPlan(t *testing.T) {
 		assert.Contain(t, "graph has 6 modules", tst.Stderr())
 	})
 
-	t.Run("error - module excluded by its map", func(t *testing.T) {
+	t.Run("error - module excluded by its group", func(t *testing.T) {
 		// --- Given ---
-		cnf, _ := planMaps(t)
+		cnf, _ := planGroups(t)
 		fil := must.Value(conf.Load(cnf))
 		cfg := &config{plan: []string{"github.com/ctx42/blog"}}
 		tst := ringtest.New(t).WetStderr()
@@ -583,7 +595,7 @@ func Test_runPlan(t *testing.T) {
 		assert.Contain(t, "graph has 6 modules", tst.Stderr())
 	})
 
-	t.Run("error - module held by no map", func(t *testing.T) {
+	t.Run("error - module held by no group", func(t *testing.T) {
 		// --- Given ---
 		src := t.TempDir()
 		writeMod(t, "module example.com/a\n", src, "one", "a")
@@ -700,7 +712,7 @@ func Test_runPlan(t *testing.T) {
 
 	t.Run("no lag without the option", func(t *testing.T) {
 		// --- Given ---
-		cnf, _ := planMaps(t)
+		cnf, _ := planGroups(t)
 		fil := must.Value(conf.Load(cnf))
 		cfg := &config{plan: []string{"github.com/ctx42/testing"}}
 		tst := ringtest.New(t).WetStdout().WetStderr()
@@ -718,7 +730,7 @@ func Test_runPlan(t *testing.T) {
 
 	t.Run("error - lag of a module outside git", func(t *testing.T) {
 		// --- Given ---
-		cnf, _ := planMaps(t)
+		cnf, _ := planGroups(t)
 		fil := must.Value(conf.Load(cnf))
 		cfg := &config{plan: []string{"github.com/ctx42/testing"}, lag: true}
 		tst := ringtest.New(t).WetStderr()
@@ -734,7 +746,7 @@ func Test_runPlan(t *testing.T) {
 
 	t.Run("error - plan cannot be written", func(t *testing.T) {
 		// --- Given ---
-		cnf, _ := planMaps(t)
+		cnf, _ := planGroups(t)
 		fil := must.Value(conf.Load(cnf))
 		cfg := &config{plan: []string{"github.com/ctx42/a"}}
 		tst := ringtest.New(t).WetStderr()
@@ -751,9 +763,9 @@ func Test_runPlan(t *testing.T) {
 }
 
 func Test_runModules(t *testing.T) {
-	t.Run("modules every map keeps", func(t *testing.T) {
+	t.Run("modules every group keeps", func(t *testing.T) {
 		// --- Given ---
-		cnf, src := planMaps(t)
+		cnf, src := planGroups(t)
 		fil := must.Value(conf.Load(cnf))
 		tst := ringtest.New(t).WetStdout().WetStderr()
 		rng := tst.Ring()
@@ -767,29 +779,29 @@ func Test_runModules(t *testing.T) {
 		must.Nil(json.Unmarshal([]byte(tst.Stdout()), &have))
 		want := []planMod{
 			{
-				Path: "github.com/ctx42/a",
-				Map:  "ctx42",
-				Dir:  filepath.Join(src, "ctx42", "a"),
+				Path:  "github.com/ctx42/a",
+				Group: "ctx42",
+				Dir:   filepath.Join(src, "ctx42", "a"),
 			},
 			{
-				Path: "github.com/ctx42/d",
-				Map:  "ctx42",
-				Dir:  filepath.Join(src, "ctx42", "d"),
+				Path:  "github.com/ctx42/d",
+				Group: "ctx42",
+				Dir:   filepath.Join(src, "ctx42", "d"),
 			},
 			{
-				Path: "github.com/ctx42/testing",
-				Map:  "ctx42",
-				Dir:  filepath.Join(src, "ctx42", "testing"),
+				Path:  "github.com/ctx42/testing",
+				Group: "ctx42",
+				Dir:   filepath.Join(src, "ctx42", "testing"),
 			},
 			{
-				Path: "github.com/customer/b",
-				Map:  "work",
-				Dir:  filepath.Join(src, "customer", "b"),
+				Path:  "github.com/customer/b",
+				Group: "work",
+				Dir:   filepath.Join(src, "customer", "b"),
 			},
 			{
-				Path: "github.com/customer/z",
-				Map:  "work",
-				Dir:  filepath.Join(src, "customer", "z"),
+				Path:  "github.com/customer/z",
+				Group: "work",
+				Dir:   filepath.Join(src, "customer", "z"),
 			},
 		}
 		assert.Equal(t, want, have)
@@ -824,14 +836,14 @@ func Test_runModules(t *testing.T) {
 		var have []planMod
 		must.Nil(json.Unmarshal([]byte(tst.Stdout()), &have))
 		want := []planMod{
-			{Path: "example.com/a", Map: "one", Dir: filepath.Join(src, "a")},
+			{Path: "example.com/a", Group: "one", Dir: filepath.Join(src, "a")},
 		}
 		assert.Equal(t, want, have)
 
 		assert.Contain(t, "resolving example.com/c@v1.0.0", tst.Stderr())
 	})
 
-	t.Run("error - a map directory cannot be scanned", func(t *testing.T) {
+	t.Run("error - a group directory cannot be scanned", func(t *testing.T) {
 		// --- Given ---
 		gone := filepath.Join(t.TempDir(), "gone")
 		cnf := oskit.Create(t, ""+

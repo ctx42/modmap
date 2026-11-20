@@ -168,7 +168,7 @@ func Test_Renderer_Render(t *testing.T) {
 		assert.NotContain(t, ">ctx42</text>", buf.String())
 	})
 
-	t.Run("two maps side by side", func(t *testing.T) {
+	t.Run("two groups side by side", func(t *testing.T) {
 		// --- Given ---
 		grp := newGraph(map[string][]string{
 			"github.com/ctx42/testing": nil,

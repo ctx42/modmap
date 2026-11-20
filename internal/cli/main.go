@@ -11,11 +11,11 @@ import (
 )
 
 // Main is the modmap entrypoint: it parses the command line arguments carried
-// by rng, renders the requested maps into one image, and returns the process
+// by rng, renders the requested groups into one image, and returns the process
 // exit code. The usage text and every error are written to stderr; the image
 // goes to the output file or, with the "--web" option, to a browser, and
 // never to stdout. With the "--plan" or "--modules" option no image is
-// rendered: the update plan, or the modules the maps keep, is printed to
+// rendered: the update plan, or the modules the groups keep, is printed to
 // stdout as JSON instead.
 //
 // The exit code is 0 on success and 1 on a usage or rendering failure.

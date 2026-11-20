@@ -12,18 +12,18 @@ import (
 	"golang.org/x/image/math/fixed"
 )
 
-// FontFamily is the font family name the map labels are set in.
+// FontFamily is the font family name the diagram labels are set in.
 const FontFamily = "Modmap Sans"
 
-// Font measures label text in the font embedded in the map, so a box is as
+// Font measures label text in the font embedded in the diagram, so a box is as
 // wide as the browser will draw its label.
 type Font struct {
-	data []byte      // The font file embedded in the map.
+	data []byte      // The font file embedded in the diagram.
 	sft  *sfnt.Font  // The parsed font file.
 	buf  sfnt.Buffer // Scratch buffer reused by the measurements.
 }
 
-// NewFont returns the font the map labels are set in.
+// NewFont returns the font the diagram labels are set in.
 func NewFont() (*Font, error) {
 	sft, err := sfnt.Parse(goregular.TTF)
 	if err != nil {

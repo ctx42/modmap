@@ -21,11 +21,12 @@ func ValidateGlob(glob string) error {
 	return nil
 }
 
-// Filter decides which module paths take part in the map. The globs use the
-// [path.Match] syntax where the "*" wildcard does not cross a path separator.
+// Filter decides which module paths take part in the diagram. The globs use
+// the [path.Match] syntax where the "*" wildcard does not cross a path
+// separator.
 type Filter struct {
 	include []string // Globs a module path must match, any when empty.
-	exclude []string // Globs removing a module path from the map.
+	exclude []string // Globs removing a module path from the diagram.
 	anyOf   []Filter // Filters one of which must pass a module path.
 }
 
@@ -37,8 +38,8 @@ func NewFilter(include, exclude []string) Filter {
 }
 
 // AnyOf returns a filter passing a module path when any of flts passes it,
-// so the modules of several maps are discovered in one go. Without filters it
-// passes every module path, as the zero value does.
+// so the modules of several groups are discovered in one go. Without filters
+// it passes every module path, as the zero value does.
 func AnyOf(flts ...Filter) Filter { return Filter{anyOf: flts} }
 
 // Match reports whether the module path passes the filter. A path matching

@@ -76,18 +76,18 @@ const (
 		` text-anchor="middle">%s</text>` + "\n"
 )
 
-// Column is one map drawn beside the others in a combined image.
+// Column is one group drawn beside the others in a combined image.
 type Column struct {
-	// Name is the map name drawn above the column.
+	// Name is the group name drawn above the column.
 	Name string
 
 	// Filter decides which modules the column claims.
 	Filter mod.Filter
 }
 
-// column is the geometry of one map column.
+// column is the geometry of one group column.
 type column struct {
-	name  string  // Map name drawn above the column.
+	name  string  // Group name drawn above the column.
 	left  float64 // The x coordinate of the left side of the column.
 	width float64 // Width of the column.
 }
@@ -117,7 +117,7 @@ func (lay layout) boxTop(level int) float64 {
 	return lay.height - marginY - boxHeight - float64(level)*band
 }
 
-// named reports whether the columns are drawn under their map names, which
+// named reports whether the columns are drawn under their group names, which
 // takes two or more of them.
 func (lay layout) named() bool { return len(lay.cols) > 1 }
 
@@ -126,7 +126,7 @@ type Renderer struct {
 	fnt *Font // Font the labels are measured and set in.
 }
 
-// NewRenderer returns a renderer using the embedded map font.
+// NewRenderer returns a renderer using the embedded diagram font.
 func NewRenderer() (*Renderer, error) {
 	fnt, err := NewFont()
 	if err != nil {
@@ -135,8 +135,8 @@ func NewRenderer() (*Renderer, error) {
 	return &Renderer{fnt: fnt}, nil
 }
 
-// Render writes the map of the graph as a standalone SVG document. Every box
-// carries the module path, its level, the modules which have to be updated
+// Render writes the diagram of the graph as a standalone SVG document. Every
+// box carries the module path, its level, the modules which have to be updated
 // when it changes, and the order to update them in.
 //
 // Every module is drawn once, in the first of the columns whose filter keeps
@@ -167,9 +167,9 @@ func (rnd *Renderer) Render(
 	return nil
 }
 
-// layout computes the geometry of the map. Every box is as wide as the widest
-// label needs, so the levels keep an even rhythm, and every column is as wide
-// as its own widest level. Named columns add one row above the top level.
+// layout computes the geometry of the diagram. Every box is as wide as the
+// widest label needs, so the levels keep an even rhythm, and every column is as
+// wide as its own widest level. Named columns add one row above the top level.
 func (rnd *Renderer) layout(grp *graph.Graph, cols []Column) layout {
 	if len(cols) == 0 {
 		cols = []Column{{}}
@@ -227,7 +227,7 @@ func (rnd *Renderer) head(buf *bytes.Buffer, lay layout, css string) {
 }
 
 // levels writes the level separators and the level labels. Every level is
-// closed by a separator drawn below it, the lowest one closing the map.
+// closed by a separator drawn below it, the lowest one closing the diagram.
 func (rnd *Renderer) levels(buf *bytes.Buffer, lay layout) {
 	x1, x2 := marginX/2, lay.width-marginX/2
 	for lvl := range lay.levels {
@@ -246,9 +246,9 @@ func (rnd *Renderer) levels(buf *bytes.Buffer, lay layout) {
 	}
 }
 
-// columns writes the map names above the named columns and the dividers
-// between them. A divider runs down the middle of the gap between two
-// columns, from the top of the name row to the separator closing the map.
+// columns writes the group names above the named columns and the dividers
+// between them. A divider runs down the middle of the gap between two columns,
+// from the top of the name row to the separator closing the diagram.
 func (rnd *Renderer) columns(buf *bytes.Buffer, lay layout) {
 	if !lay.named() {
 		return

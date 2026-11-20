@@ -3,9 +3,9 @@
 
 // Package cli implements the modmap command line interface: option parsing,
 // run configuration, and the top level dispatch returning the exit code. A
-// run draws one image, holding every map it is asked for side by side, and
+// run draws one image, holding every group it is asked for side by side, and
 // either writes it or opens it in a browser; or it prints, as JSON, the
-// update plan of the changed modules or the modules the maps keep.
+// update plan of the changed modules or the modules the groups keep.
 package cli
 
 import "errors"
@@ -28,21 +28,21 @@ var (
 	// provides are used alongside it.
 	errConfOnly = errors.New("-c cannot be used with other options")
 
-	// errWebOut is returned when the map is opened in a browser and
+	// errWebOut is returned when the diagram is opened in a browser and
 	// written to a file at once.
 	errWebOut = errors.New("--web cannot be used with -o")
 
 	// errPlanWeb is returned when the plan is asked for together with
-	// opening the map in a browser.
+	// opening the diagram in a browser.
 	errPlanWeb = errors.New("--plan cannot be used with --web")
 
 	// errPlanConf is returned when the plan is asked for without a
 	// configuration file.
 	errPlanConf = errors.New("--plan requires -c")
 
-	// errPlanMap is returned when the plan is given map names; it spans
-	// every map the configuration file declares.
-	errPlanMap = errors.New("--plan takes no group name")
+	// errPlanGroup is returned when the plan is given group names; it spans
+	// every group the configuration file declares.
+	errPlanGroup = errors.New("--plan takes no group name")
 
 	// errLagPlan is returned when the lag is asked for without a plan.
 	errLagPlan = errors.New("--lag requires --plan")
@@ -52,7 +52,7 @@ var (
 	errModulesConf = errors.New("--modules requires -c")
 
 	// errModulesOnly is returned when the modules are asked for together
-	// with a plan, a browser, or map names; they span every map.
+	// with a plan, a browser, or group names; they span every group.
 	errModulesOnly = errors.New(
 		"--modules cannot be used with --plan, --web, or group names",
 	)
@@ -65,7 +65,7 @@ var (
 	errModNotFound = errors.New("module not found")
 
 	// errModExcluded is returned when the changed module is kept out by a
-	// map finding it on disk, or no map keeping it finds it there.
+	// group finding it on disk, or no group keeping it finds it there.
 	errModExcluded = errors.New("module excluded")
 
 	// errModNotOnDisk is returned when the changed module was read from the

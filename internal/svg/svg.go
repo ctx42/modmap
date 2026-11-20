@@ -5,7 +5,7 @@
 // carrying the dependency data the hover interaction needs.
 package svg
 
-// Map geometry in user units, taken from the reference drawing.
+// Diagram geometry in user units, taken from the reference drawing.
 const (
 	boxHeight = 231.0  // Height of every module box.
 	boxRadius = 32.0   // Corner radius of a module box.
@@ -23,7 +23,7 @@ const (
 )
 
 // Interaction markup and style. The rules use the CSS ":has" selector and no
-// script, so the map stays interactive wherever style sheets are honored.
+// script, so the diagram stays interactive wherever style sheets are honored.
 // Hovering a module lights it and every module related to it — the ones it
 // relies on and the ones relying on it; clicking one pins that light by
 // focusing the module, and clicking the canvas lets it go. The lit modules
@@ -53,7 +53,7 @@ const (
 	dimOpacity = "0.12"
 )
 
-// Map colors, taken from the reference drawing.
+// Diagram colors, taken from the reference drawing.
 const (
 	colorBg        = "#121212"      // Canvas background.
 	colorBox       = "#d3d3d3"      // Module box border.

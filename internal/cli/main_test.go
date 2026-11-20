@@ -27,11 +27,11 @@ func Test_Main(t *testing.T) {
 		assert.Contain(t, "Usage:", tst.Stderr())
 	})
 
-	t.Run("the map is written to the output file", func(t *testing.T) {
+	t.Run("the diagram is written to the output file", func(t *testing.T) {
 		// --- Given ---
 		src := t.TempDir()
 		writeMod(t, "module example.com/a\n", src, "a")
-		out := filepath.Join(t.TempDir(), "map.svg")
+		out := filepath.Join(t.TempDir(), "diagram.svg")
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring("-o", out, src)
 
@@ -47,7 +47,7 @@ func Test_Main(t *testing.T) {
 	t.Run("error - the run fails", func(t *testing.T) {
 		// --- Given ---
 		gone := filepath.Join(t.TempDir(), "gone")
-		out := filepath.Join(t.TempDir(), "map.svg")
+		out := filepath.Join(t.TempDir(), "diagram.svg")
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring("-o", out, gone)
 

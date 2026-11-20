@@ -19,8 +19,8 @@ import (
 	"github.com/ctx42/modmap/pkg/mod"
 )
 
-// run generates the image the configuration asks for: the map described by
-// the options, or the maps the configuration file selects, side by side.
+// run generates the image the configuration asks for: the diagram described
+// by the options, or the groups the configuration file selects, side by side.
 func run(ctx context.Context, rng *ring.Ring, cfg *config) error {
 	if cfg.conf == "" {
 		spc := spec{
@@ -41,29 +41,29 @@ func run(ctx context.Context, rng *ring.Ring, cfg *config) error {
 	if cfg.modules {
 		return runModules(ctx, rng, fil)
 	}
-	maps, err := fil.Select(cfg.names)
+	groups, err := fil.Select(cfg.names)
 	if err != nil {
 		return err
 	}
-	return generate(ctx, rng, cfg, combine(fil.Out, maps))
+	return generate(ctx, rng, cfg, combine(fil.Out, groups))
 }
 
-// combine returns the spec drawing the maps side by side, one column per map
-// in the order given, into the file at out. The directories of every map are
-// scanned together and a module is kept when any of the maps keeps it, so a
-// requirement crossing maps is drawn as well.
-func combine(out string, maps []conf.Map) spec {
+// combine returns the spec drawing the groups side by side, one column per
+// group in the order given, into the file at out. The directories of every
+// group are scanned together and a module is kept when any of the groups
+// keeps it, so a requirement crossing groups is drawn as well.
+func combine(out string, groups []conf.Group) spec {
 	spc := spec{Out: out}
-	names := make([]string, 0, len(maps))
-	flts := make([]mod.Filter, 0, len(maps))
+	names := make([]string, 0, len(groups))
+	flts := make([]mod.Filter, 0, len(groups))
 	seen := make(map[string]bool)
-	for _, mp := range maps {
-		flt := mod.NewFilter(mp.Include, mp.Exclude)
-		names = append(names, mp.Name)
+	for _, grp := range groups {
+		flt := mod.NewFilter(grp.Include, grp.Exclude)
+		names = append(names, grp.Name)
 		flts = append(flts, flt)
-		col := svg.Column{Name: mp.Name, Filter: flt}
+		col := svg.Column{Name: grp.Name, Filter: flt}
 		spc.Columns = append(spc.Columns, col)
-		for _, dir := range mp.Dirs {
+		for _, dir := range grp.Dirs {
 			if !seen[dir] {
 				seen[dir] = true
 				spc.Dirs = append(spc.Dirs, dir)
@@ -77,7 +77,7 @@ func combine(out string, maps []conf.Map) spec {
 
 // spec describes one image to generate.
 type spec struct {
-	// Name of the image, empty for the map described by the options.
+	// Name of the image, empty for the diagram described by the options.
 	Name string
 
 	// Dirs holds the absolute paths of the directories to scan.
@@ -86,7 +86,7 @@ type spec struct {
 	// Filter decides which modules are rendered.
 	Filter mod.Filter
 
-	// Columns holds the maps drawn side by side, left to right. Without
+	// Columns holds the groups drawn side by side, left to right. Without
 	// columns every module is drawn in one unnamed column.
 	Columns []svg.Column
 

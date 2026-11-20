@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: (c) 2026 Rafal Zajac
 // SPDX-License-Identifier: MIT
 
-// Package conf reads the modmap configuration file describing the maps to
+// Package conf reads the modmap configuration file describing the groups to
 // draw and the image they are drawn into.
 package conf
 
@@ -20,35 +20,35 @@ import (
 
 // Configuration file errors.
 var (
-	// ErrNoMaps is returned for a configuration file declaring no maps.
-	ErrNoMaps = errors.New("no groups declared")
+	// ErrNoGroups is returned for a configuration file declaring no groups.
+	ErrNoGroups = errors.New("no groups declared")
 
-	// ErrNoName is returned for a map without a name.
+	// ErrNoName is returned for a group without a name.
 	ErrNoName = errors.New("group without a name")
 
-	// ErrDupName is returned when two maps share a name.
+	// ErrDupName is returned when two groups share a name.
 	ErrDupName = errors.New("duplicate group name")
 
-	// ErrNoDirs is returned for a map without directories to scan.
+	// ErrNoDirs is returned for a group without directories to scan.
 	ErrNoDirs = errors.New("group without directories")
 
-	// ErrEmptyDir is returned for a map listing an empty directory.
+	// ErrEmptyDir is returned for a group listing an empty directory.
 	ErrEmptyDir = errors.New("group with an empty directory")
 
 	// ErrNoOut is returned for a configuration without an output file.
 	ErrNoOut = errors.New("no output file")
 
-	// ErrUnkMap is returned when a requested map is not declared.
-	ErrUnkMap = errors.New("unknown group")
+	// ErrUnkGroup is returned when a requested group is not declared.
+	ErrUnkGroup = errors.New("unknown group")
 
 	// ErrMapsKey is returned for a configuration file using the "maps" key,
 	// which was renamed to "groups".
 	ErrMapsKey = errors.New("maps was renamed to groups")
 )
 
-// Map describes one map the configuration file declares.
-type Map struct {
-	// Name is how the map is asked for on the command line.
+// Group describes one group the configuration file declares.
+type Group struct {
+	// Name is how the group is asked for on the command line.
 	Name string `yaml:"name"`
 
 	// Dirs holds the directories scanned for Go modules.
@@ -58,23 +58,23 @@ type Map struct {
 	// rendered. An empty list renders every module found.
 	Include []string `yaml:"include"`
 
-	// Exclude holds the module path globs removing modules from the map. A
-	// module matching both lists is not rendered.
+	// Exclude holds the module path globs removing modules from the group.
+	// A module matching both lists is not rendered.
 	Exclude []string `yaml:"exclude"`
 }
 
 // Config represents the modmap configuration file.
 type Config struct {
-	// Out is the SVG file the selected maps are drawn into, side by side.
+	// Out is the SVG file the selected groups are drawn into, side by side.
 	Out string `yaml:"out"`
 
-	// Maps holds the maps the file declares.
-	Maps []Map `yaml:"groups"`
+	// Groups holds the groups the file declares.
+	Groups []Group `yaml:"groups"`
 }
 
 // Load reads the configuration file at pth. The relative directory and output
 // paths it holds are resolved against the directory of the file itself. A key
-// the configuration does not define is an error, so is an "out" key on a map.
+// the configuration does not define is an error, so is an "out" key on a group.
 func Load(pth string) (*Config, error) {
 	data, err := os.ReadFile(pth) //nolint:gosec
 	if err != nil {
@@ -95,35 +95,35 @@ func Load(pth string) (*Config, error) {
 	return cfg, nil
 }
 
-// Select returns the named maps in the order they are named, or every map
+// Select returns the named groups in the order they are named, or every group
 // declared when no names are given.
-func (cfg *Config) Select(names []string) ([]Map, error) {
+func (cfg *Config) Select(names []string) ([]Group, error) {
 	if len(names) == 0 {
-		return cfg.Maps, nil
+		return cfg.Groups, nil
 	}
-	maps := make([]Map, 0, len(names))
+	groups := make([]Group, 0, len(names))
 	for _, name := range names {
-		idx := slices.IndexFunc(cfg.Maps, func(mp Map) bool {
-			return mp.Name == name
+		idx := slices.IndexFunc(cfg.Groups, func(grp Group) bool {
+			return grp.Name == name
 		})
 		if idx < 0 {
 			return nil, fmt.Errorf(
 				"%w: %s (have: %s)",
-				ErrUnkMap,
+				ErrUnkGroup,
 				name,
 				strings.Join(cfg.Names(), ", "),
 			)
 		}
-		maps = append(maps, cfg.Maps[idx])
+		groups = append(groups, cfg.Groups[idx])
 	}
-	return maps, nil
+	return groups, nil
 }
 
-// Names returns the names of the declared maps.
+// Names returns the names of the declared groups.
 func (cfg *Config) Names() []string {
-	names := make([]string, 0, len(cfg.Maps))
-	for _, mp := range cfg.Maps {
-		names = append(names, mp.Name)
+	names := make([]string, 0, len(cfg.Groups))
+	for _, grp := range cfg.Groups {
+		names = append(names, grp.Name)
 	}
 	return names
 }
@@ -131,32 +131,32 @@ func (cfg *Config) Names() []string {
 // validate reports the first problem making the configuration unusable. The
 // paths are compared as they are, so they are resolved beforehand.
 func (cfg *Config) validate() error {
-	if len(cfg.Maps) == 0 {
-		return ErrNoMaps
+	if len(cfg.Groups) == 0 {
+		return ErrNoGroups
 	}
 	if cfg.Out == "" {
 		return ErrNoOut
 	}
-	names := make(map[string]bool, len(cfg.Maps))
-	for idx, mp := range cfg.Maps {
+	names := make(map[string]bool, len(cfg.Groups))
+	for idx, grp := range cfg.Groups {
 		switch {
-		case mp.Name == "":
+		case grp.Name == "":
 			return fmt.Errorf("%w: groups[%d]", ErrNoName, idx)
 
-		case names[mp.Name]:
-			return fmt.Errorf("%w: %s", ErrDupName, mp.Name)
+		case names[grp.Name]:
+			return fmt.Errorf("%w: %s", ErrDupName, grp.Name)
 
-		case len(mp.Dirs) == 0:
-			return fmt.Errorf("%w: %s", ErrNoDirs, mp.Name)
+		case len(grp.Dirs) == 0:
+			return fmt.Errorf("%w: %s", ErrNoDirs, grp.Name)
 
-		case slices.Contains(mp.Dirs, ""):
-			return fmt.Errorf("%w: %s", ErrEmptyDir, mp.Name)
+		case slices.Contains(grp.Dirs, ""):
+			return fmt.Errorf("%w: %s", ErrEmptyDir, grp.Name)
 		}
-		names[mp.Name] = true
+		names[grp.Name] = true
 
-		for _, glob := range slices.Concat(mp.Include, mp.Exclude) {
+		for _, glob := range slices.Concat(grp.Include, grp.Exclude) {
 			if err := mod.ValidateGlob(glob); err != nil {
-				return fmt.Errorf("%s: %w", mp.Name, err)
+				return fmt.Errorf("%s: %w", grp.Name, err)
 			}
 		}
 	}
@@ -167,9 +167,9 @@ func (cfg *Config) validate() error {
 // resolving it against dir. Empty paths stay empty.
 func (cfg *Config) resolve(dir string) {
 	cfg.Out = absPath(dir, cfg.Out)
-	for _, mp := range cfg.Maps {
-		for idx, pth := range mp.Dirs {
-			mp.Dirs[idx] = absPath(dir, pth)
+	for _, grp := range cfg.Groups {
+		for idx, pth := range grp.Dirs {
+			grp.Dirs[idx] = absPath(dir, pth)
 		}
 	}
 }

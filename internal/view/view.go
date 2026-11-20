@@ -1,12 +1,12 @@
 // SPDX-FileCopyrightText: (c) 2026 Rafal Zajac
 // SPDX-License-Identifier: MIT
 
-// Package view writes a rendered map as a page opened straight from disk
-// and hands it to a browser, so a map can be looked at without a server
-// and without being kept anywhere the user has to name. The page wraps the
-// map in a pan and zoom viewer with the SVG inlined in it; the map itself
-// is written beside the page as the same script-free SVG the renderer
-// produces, linked for saving.
+// Package view writes a rendered diagram as a page opened straight from disk
+// and hands it to a browser, so a diagram can be looked at without a server and
+// without being kept anywhere the user has to name. The page wraps the diagram
+// in a pan and zoom viewer with the SVG inlined in it; the diagram itself is
+// written beside the page as the same script-free SVG the renderer produces,
+// linked for saving.
 package view
 
 import (
@@ -24,11 +24,11 @@ import (
 // Names the viewer writes under.
 const (
 	// dirName is the directory, under the system temporary directory,
-	// holding the pages. Every run rewrites the files of the map it
+	// holding the pages. Every run rewrites the files of the diagram it
 	// shows, so the pages never pile up.
 	dirName = "modmap"
 
-	// defName is the file name of a map whose title carries nothing a
+	// defName is the file name of a diagram whose title carries nothing a
 	// file name can be built from.
 	defName = "diagram"
 )
@@ -38,7 +38,7 @@ const (
 	// dirPerm is the mode of the directory holding the pages.
 	dirPerm = 0o700
 
-	// filePerm is the mode of the page and the map file.
+	// filePerm is the mode of the page and the SVG file.
 	filePerm = 0o600
 )
 
@@ -52,11 +52,11 @@ var pages embed.FS
 // page is the viewer page template.
 var page = template.Must(template.ParseFS(pages, "page.html"))
 
-// Open writes the map document as a viewer page shown under the given
+// Open writes the diagram document as a viewer page shown under the given
 // title and opens it in a browser. It returns the path of the page, which
 // outlives the run because the browser reads it once modmap is gone; the
 // path is returned even when the browser cannot be opened, so the user is
-// told where the map is. A nil opener means the desktop browser; tests
+// told where the diagram is. A nil opener means the desktop browser; tests
 // pass their own.
 func Open(
 	title string,
@@ -81,7 +81,7 @@ func Open(
 	return pth, nil
 }
 
-// write writes the viewer page and the map it shows into dir, creating the
+// write writes the viewer page and the diagram it shows into dir, creating the
 // directory when it is not there. It returns the path of the page.
 func write(dir, title string, doc []byte) (string, error) {
 	if err := privateDir(dir); err != nil {
@@ -149,17 +149,17 @@ func replaceFile(dir, name string, data []byte) error {
 	return os.Rename(tmp.Name(), filepath.Join(dir, name))
 }
 
-// html renders the viewer page showing the map under the given title, with
-// the map inlined in it and the map file linked for saving.
+// html renders the viewer page showing the diagram under the given title, with
+// the diagram inlined in it and its SVG file linked for saving.
 func html(title, link string, doc []byte) ([]byte, error) {
 	data := struct {
-		Title string
-		Link  string
-		Map   template.HTML
+		Title   string
+		Link    string
+		Diagram template.HTML
 	}{
-		Title: title,
-		Link:  link,
-		Map:   template.HTML(doc), //nolint:gosec
+		Title:   title,
+		Link:    link,
+		Diagram: template.HTML(doc), //nolint:gosec
 	}
 	buf := &bytes.Buffer{}
 	if err := page.Execute(buf, data); err != nil {
@@ -168,7 +168,7 @@ func html(title, link string, doc []byte) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// slug returns the base name the map is written under: the title with
+// slug returns the base name the diagram is written under: the title with
 // every character a file name should not carry replaced by a dash. It
 // returns defName when nothing usable is left.
 func slug(title string) string {

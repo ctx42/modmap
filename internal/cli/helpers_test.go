@@ -106,7 +106,7 @@ func Test_within_tabular(t *testing.T) {
 func Test_replaceFile(t *testing.T) {
 	t.Run("new file", func(t *testing.T) {
 		// --- Given ---
-		pth := filepath.Join(t.TempDir(), "map.svg")
+		pth := filepath.Join(t.TempDir(), "diagram.svg")
 
 		// --- When ---
 		err := replaceFile(pth, []byte("<svg/>"))
@@ -121,7 +121,7 @@ func Test_replaceFile(t *testing.T) {
 	t.Run("existing file keeps its mode", func(t *testing.T) {
 		// --- Given ---
 		dir := t.TempDir()
-		pth := oskit.Create(t, "<svg id=\"old\"/>", dir, "map.svg")
+		pth := oskit.Create(t, "<svg id=\"old\"/>", dir, "diagram.svg")
 		must.Nil(os.Chmod(pth, 0o640))
 
 		// --- When ---
@@ -137,7 +137,7 @@ func Test_replaceFile(t *testing.T) {
 
 	t.Run("link target is replaced", func(t *testing.T) {
 		// --- Given ---
-		tgt := oskit.Create(t, "<svg id=\"old\"/>", t.TempDir(), "map.svg")
+		tgt := oskit.Create(t, "<svg id=\"old\"/>", t.TempDir(), "diagram.svg")
 
 		lnk := filepath.Join(t.TempDir(), "link.svg")
 		must.Nil(os.Symlink(tgt, lnk))
@@ -154,7 +154,7 @@ func Test_replaceFile(t *testing.T) {
 
 	t.Run("error - directory does not exist", func(t *testing.T) {
 		// --- Given ---
-		pth := filepath.Join(t.TempDir(), "gone", "map.svg")
+		pth := filepath.Join(t.TempDir(), "gone", "diagram.svg")
 
 		// --- When ---
 		err := replaceFile(pth, []byte("<svg/>"))
@@ -167,7 +167,7 @@ func Test_replaceFile(t *testing.T) {
 	t.Run("error - name taken by a directory", func(t *testing.T) {
 		// --- Given ---
 		dir := t.TempDir()
-		pth := oskit.MkdirAll(t, dir, "map.svg")
+		pth := oskit.MkdirAll(t, dir, "diagram.svg")
 
 		// --- When ---
 		err := replaceFile(pth, []byte("<svg/>"))

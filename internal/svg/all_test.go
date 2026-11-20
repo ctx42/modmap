@@ -14,7 +14,7 @@ import (
 	"github.com/ctx42/modmap/pkg/mod"
 )
 
-// fontURI matches the embedded font payload in a rendered map.
+// fontURI matches the embedded font payload in a rendered diagram.
 var fontURI = regexp.MustCompile(`data:font/ttf;base64,[A-Za-z0-9+/=]+`)
 
 // newGraph returns the graph built from a map of a module path to the module

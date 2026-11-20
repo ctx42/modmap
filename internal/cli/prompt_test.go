@@ -21,7 +21,7 @@ import (
 )
 
 func Test_confirm(t *testing.T) {
-	t.Run("a narrow map needs no confirmation", func(t *testing.T) {
+	t.Run("a narrow diagram needs no confirmation", func(t *testing.T) {
 		// --- Given ---
 		tst := ringtest.New(t)
 		rng := tst.Ring()
@@ -55,7 +55,7 @@ func Test_confirm(t *testing.T) {
 		assert.Equal(t, want, tst.Stderr())
 	})
 
-	t.Run("a wide map is asked about on a terminal", func(t *testing.T) {
+	t.Run("a wide diagram is asked about on a terminal", func(t *testing.T) {
 		// --- Given ---
 		ctl, trm := openPTY(t)
 		must.Value(ctl.WriteString("y\n"))
@@ -73,7 +73,7 @@ func Test_confirm(t *testing.T) {
 		assert.Contain(t, "render it anyway? [y/N]: ", tst.Stderr())
 	})
 
-	t.Run("a wide map renders with nobody to ask", func(t *testing.T) {
+	t.Run("a wide diagram renders with nobody to ask", func(t *testing.T) {
 		// --- Given ---
 		tst := ringtest.New(t).WetStderr()
 		tst.SetStdin(&bytes.Buffer{})

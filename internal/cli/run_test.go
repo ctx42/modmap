@@ -25,11 +25,11 @@ import (
 )
 
 func Test_run(t *testing.T) {
-	t.Run("the map from the options is generated", func(t *testing.T) {
+	t.Run("the diagram from the options is generated", func(t *testing.T) {
 		// --- Given ---
 		src := t.TempDir()
 		writeMod(t, "module example.com/a\n", src, "a")
-		out := filepath.Join(t.TempDir(), "map.svg")
+		out := filepath.Join(t.TempDir(), "diagram.svg")
 		cfg := &config{roots: []string{src}, out: out}
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
@@ -43,12 +43,12 @@ func Test_run(t *testing.T) {
 		assert.Contain(t, "found example.com/a", tst.Stderr())
 	})
 
-	t.Run("the options filter the map", func(t *testing.T) {
+	t.Run("the options filter the diagram", func(t *testing.T) {
 		// --- Given ---
 		src := t.TempDir()
 		writeMod(t, "module example.com/a\n", src, "a")
 		writeMod(t, "module example.com/b\n", src, "b")
-		out := filepath.Join(t.TempDir(), "map.svg")
+		out := filepath.Join(t.TempDir(), "diagram.svg")
 		cfg := &config{
 			roots:   []string{src},
 			include: []string{"example.com/*"},
@@ -69,9 +69,9 @@ func Test_run(t *testing.T) {
 		assert.Contain(t, "graph has 1 modules", tst.Stderr())
 	})
 
-	t.Run("every configured map in one image", func(t *testing.T) {
+	t.Run("every configured group in one image", func(t *testing.T) {
 		// --- Given ---
-		cnf := crossMaps(t)
+		cnf := crossGroups(t)
 		cfg := &config{conf: cnf}
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
@@ -93,9 +93,9 @@ func Test_run(t *testing.T) {
 		assert.Contain(t, "graph has 2 modules", tst.Stderr())
 	})
 
-	t.Run("only the named map is drawn", func(t *testing.T) {
+	t.Run("only the named group is drawn", func(t *testing.T) {
 		// --- Given ---
-		cnf := crossMaps(t)
+		cnf := crossGroups(t)
 		cfg := &config{conf: cnf, names: []string{"ctx42"}}
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
@@ -113,9 +113,9 @@ func Test_run(t *testing.T) {
 		assert.NotContain(t, "found github.com/customer/a", tst.Stderr())
 	})
 
-	t.Run("a requirement crossing maps is an edge", func(t *testing.T) {
+	t.Run("a requirement crossing groups is an edge", func(t *testing.T) {
 		// --- Given ---
-		cnf := crossMaps(t)
+		cnf := crossGroups(t)
 		cfg := &config{conf: cnf, names: []string{"ctx42", "work"}}
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
@@ -146,7 +146,7 @@ func Test_run(t *testing.T) {
 
 	t.Run("columns follow the named order", func(t *testing.T) {
 		// --- Given ---
-		cnf := crossMaps(t)
+		cnf := crossGroups(t)
 		cfg := &config{conf: cnf, names: []string{"work", "ctx42"}}
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
@@ -167,9 +167,9 @@ func Test_run(t *testing.T) {
 		assert.Contain(t, "graph has 2 modules", tst.Stderr())
 	})
 
-	t.Run("a wide row across maps is confirmed", func(t *testing.T) {
+	t.Run("a wide row across groups is confirmed", func(t *testing.T) {
 		// --- Given ---
-		cnf := wideMaps(t)
+		cnf := wideGroups(t)
 
 		ctl, trm := openPTY(t)
 		must.Value(ctl.WriteString("n\n"))
@@ -190,9 +190,9 @@ func Test_run(t *testing.T) {
 		assert.Contain(t, "render it anyway? [y/N]: ", tst.Stderr())
 	})
 
-	t.Run("a wide row across maps with yes", func(t *testing.T) {
+	t.Run("a wide row across groups with yes", func(t *testing.T) {
 		// --- Given ---
-		cnf := wideMaps(t)
+		cnf := wideGroups(t)
 		_, trm := openPTY(t)
 		cfg := &config{conf: cnf, yes: true}
 		tst := ringtest.New(t).WetStderr()
@@ -208,10 +208,10 @@ func Test_run(t *testing.T) {
 		assert.NotContain(t, "render it anyway?", tst.Stderr())
 	})
 
-	t.Run("web opens every configured map", func(t *testing.T) {
+	t.Run("web opens every configured group", func(t *testing.T) {
 		// --- Given ---
 		tmp := t.TempDir()
-		cnf := crossMaps(t)
+		cnf := crossGroups(t)
 		// os.TempDir reads the process environment, which no ring reaches.
 		t.Setenv("TMPDIR", tmp)
 		var opened string
@@ -238,10 +238,10 @@ func Test_run(t *testing.T) {
 		assert.Contain(t, "diagram written to "+pth, tst.Stderr())
 	})
 
-	t.Run("web opens the named maps", func(t *testing.T) {
+	t.Run("web opens the named groups", func(t *testing.T) {
 		// --- Given ---
 		tmp := t.TempDir()
-		cnf := crossMaps(t)
+		cnf := crossGroups(t)
 		t.Setenv("TMPDIR", tmp)
 		cfg := &config{
 			conf:   cnf,
@@ -266,10 +266,10 @@ func Test_run(t *testing.T) {
 		assert.Contain(t, "diagram written to "+pth, tst.Stderr())
 	})
 
-	t.Run("web opens one named map", func(t *testing.T) {
+	t.Run("web opens one named group", func(t *testing.T) {
 		// --- Given ---
 		tmp := t.TempDir()
-		cnf := crossMaps(t)
+		cnf := crossGroups(t)
 		t.Setenv("TMPDIR", tmp)
 		cfg := &config{
 			conf:   cnf,
@@ -294,10 +294,13 @@ func Test_run(t *testing.T) {
 		assert.Contain(t, "graph has 1 modules", tst.Stderr())
 	})
 
-	t.Run("plan printed instead of a map", func(t *testing.T) {
+	t.Run("plan printed instead of a diagram", func(t *testing.T) {
 		// --- Given ---
-		cnf, _ := planMaps(t)
-		cfg := &config{conf: cnf, plan: []string{"github.com/ctx42/d"}}
+		cnf, _ := planGroups(t)
+		cfg := &config{
+			conf: cnf,
+			plan: []string{"github.com/ctx42/d"},
+		}
 		tst := ringtest.New(t).WetStdout().WetStderr()
 		rng := tst.Ring()
 
@@ -312,9 +315,9 @@ func Test_run(t *testing.T) {
 		assert.Contain(t, "graph has 6 modules", tst.Stderr())
 	})
 
-	t.Run("modules printed instead of a map", func(t *testing.T) {
+	t.Run("modules printed instead of a diagram", func(t *testing.T) {
 		// --- Given ---
-		cnf, _ := planMaps(t)
+		cnf, _ := planGroups(t)
 		cfg := &config{conf: cnf, modules: true}
 		tst := ringtest.New(t).WetStdout().WetStderr()
 		rng := tst.Ring()
@@ -330,9 +333,12 @@ func Test_run(t *testing.T) {
 		assert.Contain(t, "graph has 6 modules", tst.Stderr())
 	})
 
-	t.Run("error - unknown map name", func(t *testing.T) {
+	t.Run("error - unknown group name", func(t *testing.T) {
 		// --- Given ---
-		cfg := &config{conf: crossMaps(t), names: []string{"three"}}
+		cfg := &config{
+			conf:  crossGroups(t),
+			names: []string{"three"},
+		}
 		rng := ringtest.New(t).Ring()
 
 		// --- When ---
@@ -354,7 +360,7 @@ func Test_run(t *testing.T) {
 		assert.ErrorContain(t, "read configuration", err)
 	})
 
-	t.Run("error - a map directory cannot be scanned", func(t *testing.T) {
+	t.Run("error - a group directory cannot be scanned", func(t *testing.T) {
 		// --- Given ---
 		gone := filepath.Join(t.TempDir(), "gone")
 		cnf := oskit.Create(t, ""+
@@ -376,9 +382,9 @@ func Test_run(t *testing.T) {
 }
 
 func Test_combine(t *testing.T) {
-	t.Run("maps side by side", func(t *testing.T) {
+	t.Run("groups side by side", func(t *testing.T) {
 		// --- Given ---
-		maps := []conf.Map{
+		groups := []conf.Group{
 			{
 				Name:    "ctx42",
 				Dirs:    []string{"/src/ctx42", "/src/shared"},
@@ -393,7 +399,7 @@ func Test_combine(t *testing.T) {
 		}
 
 		// --- When ---
-		have := combine("/out/all.svg", maps)
+		have := combine("/out/all.svg", groups)
 
 		// --- Then ---
 		assert.Equal(t, "ctx42-work", have.Name)
@@ -414,12 +420,12 @@ func Test_combine(t *testing.T) {
 		assert.True(t, have.Columns[1].Filter.Match("github.com/customer/a"))
 	})
 
-	t.Run("one map", func(t *testing.T) {
+	t.Run("one group", func(t *testing.T) {
 		// --- Given ---
-		maps := []conf.Map{{Name: "ctx42", Dirs: []string{"/src"}}}
+		groups := []conf.Group{{Name: "ctx42", Dirs: []string{"/src"}}}
 
 		// --- When ---
-		have := combine("/out/all.svg", maps)
+		have := combine("/out/all.svg", groups)
 
 		// --- Then ---
 		assert.Equal(t, "ctx42", have.Name)
@@ -437,7 +443,7 @@ func Test_generate(t *testing.T) {
 			"module example.com/a\n"+
 			"require example.com/b v1.0.0\n", src, "a")
 		writeMod(t, "module example.com/b\n", src, "b")
-		out := filepath.Join(t.TempDir(), "map.svg")
+		out := filepath.Join(t.TempDir(), "diagram.svg")
 		spc := spec{Dirs: []string{src}, Out: out}
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
@@ -463,7 +469,7 @@ func Test_generate(t *testing.T) {
 		src := t.TempDir()
 		writeMod(t, "module example.com/a\n", src, "a")
 		writeMod(t, "module other.com/b\n", src, "b")
-		out := filepath.Join(t.TempDir(), "map.svg")
+		out := filepath.Join(t.TempDir(), "diagram.svg")
 		spc := spec{
 			Dirs:   []string{src},
 			Filter: mod.NewFilter([]string{"example.com/*"}, nil),
@@ -484,7 +490,7 @@ func Test_generate(t *testing.T) {
 		assert.Contain(t, "graph has 1 modules", tst.Stderr())
 	})
 
-	t.Run("wide map declined", func(t *testing.T) {
+	t.Run("wide diagram declined", func(t *testing.T) {
 		// --- Given ---
 		src := t.TempDir()
 		for idx := range wideLevel + 1 {
@@ -495,7 +501,7 @@ func Test_generate(t *testing.T) {
 		ctl, trm := openPTY(t)
 		must.Value(ctl.WriteString("n\n"))
 
-		out := filepath.Join(t.TempDir(), "map.svg")
+		out := filepath.Join(t.TempDir(), "diagram.svg")
 		spc := spec{Dirs: []string{src}, Out: out}
 
 		tst := ringtest.New(t).WetStderr()
@@ -511,7 +517,7 @@ func Test_generate(t *testing.T) {
 		assert.Contain(t, "render it anyway? [y/N]: ", tst.Stderr())
 	})
 
-	t.Run("web map opened", func(t *testing.T) {
+	t.Run("web diagram opened", func(t *testing.T) {
 		// --- Given ---
 		tmp := t.TempDir()
 		src := t.TempDir()
@@ -601,7 +607,7 @@ func Test_generate(t *testing.T) {
 		writeMod(t, ""+
 			"module example.com/b\n"+
 			"require example.com/a v1.0.0\n", src, "b")
-		out := filepath.Join(t.TempDir(), "map.svg")
+		out := filepath.Join(t.TempDir(), "diagram.svg")
 		spc := spec{Dirs: []string{src}, Out: out}
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
@@ -621,7 +627,7 @@ func Test_generate(t *testing.T) {
 		// --- Given ---
 		src := t.TempDir()
 		writeMod(t, "module example.com/a\n", src, "a")
-		out := filepath.Join(t.TempDir(), "gone", "map.svg")
+		out := filepath.Join(t.TempDir(), "gone", "diagram.svg")
 		spc := spec{Dirs: []string{src}, Out: out}
 		tst := ringtest.New(t).WetStderr()
 		rng := tst.Ring()
@@ -638,7 +644,7 @@ func Test_generate(t *testing.T) {
 }
 
 func Test_spec_title(t *testing.T) {
-	t.Run("the map name wins", func(t *testing.T) {
+	t.Run("the group name wins", func(t *testing.T) {
 		// --- Given ---
 		spc := spec{Name: "ctx42", Dirs: []string{"/src/work"}}
 
@@ -649,7 +655,7 @@ func Test_spec_title(t *testing.T) {
 		assert.Equal(t, "ctx42", have)
 	})
 
-	t.Run("the directory names an unnamed map", func(t *testing.T) {
+	t.Run("the directory names an unnamed diagram", func(t *testing.T) {
 		// --- Given ---
 		spc := spec{Dirs: []string{"/src/work"}}
 
@@ -673,7 +679,7 @@ func Test_spec_title(t *testing.T) {
 }
 
 func Test_show(t *testing.T) {
-	t.Run("the map is written and opened in a browser", func(t *testing.T) {
+	t.Run("the diagram is written and opened in a browser", func(t *testing.T) {
 		// --- Given ---
 		tmp := t.TempDir()
 		src := t.TempDir()
@@ -701,7 +707,7 @@ func Test_show(t *testing.T) {
 		assert.Contain(t, "diagram written to "+pth, tst.Stderr())
 	})
 
-	t.Run("error - no browser to open the map in", func(t *testing.T) {
+	t.Run("error - no browser to open the diagram in", func(t *testing.T) {
 		// --- Given ---
 		tmp := t.TempDir()
 		src := t.TempDir()
@@ -727,13 +733,13 @@ func Test_show(t *testing.T) {
 }
 
 func Test_write(t *testing.T) {
-	t.Run("map written", func(t *testing.T) {
+	t.Run("diagram written", func(t *testing.T) {
 		// --- Given ---
 		mods := map[string]*mod.Module{
 			"example.com/a": {Path: "example.com/a"},
 		}
 		grp := must.Value(graph.New(mods))
-		out := filepath.Join(t.TempDir(), "map.svg")
+		out := filepath.Join(t.TempDir(), "diagram.svg")
 
 		// --- When ---
 		err := write(grp, nil, out)
@@ -747,7 +753,7 @@ func Test_write(t *testing.T) {
 	t.Run("error - directory does not exist", func(t *testing.T) {
 		// --- Given ---
 		grp := must.Value(graph.New(nil))
-		out := filepath.Join(t.TempDir(), "gone", "map.svg")
+		out := filepath.Join(t.TempDir(), "gone", "diagram.svg")
 
 		// --- When ---
 		err := write(grp, nil, out)

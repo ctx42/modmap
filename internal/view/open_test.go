@@ -18,7 +18,7 @@ func Test_open(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
 
 	// --- When ---
-	err := open("file:///tmp/modmap/map.html")
+	err := open("file:///tmp/modmap/diagram.html")
 
 	// --- Then ---
 	assert.ErrorIs(t, ErrNoBrowser, err)
@@ -33,7 +33,7 @@ func Test_openWith(t *testing.T) {
 		cmds := [][]string{{"modmap-no-such-opener"}, {"true"}}
 
 		// --- When ---
-		err := openWith(cmds, "file:///tmp/modmap/map.html")
+		err := openWith(cmds, "file:///tmp/modmap/diagram.html")
 
 		// --- Then ---
 		assert.NoError(t, err)
@@ -44,7 +44,7 @@ func Test_openWith(t *testing.T) {
 		cmds := [][]string{{"modmap-no-such-opener"}}
 
 		// --- When ---
-		err := openWith(cmds, "file:///tmp/modmap/map.html")
+		err := openWith(cmds, "file:///tmp/modmap/diagram.html")
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrNoBrowser, err)
@@ -52,7 +52,7 @@ func Test_openWith(t *testing.T) {
 
 	t.Run("error - no commands at all", func(t *testing.T) {
 		// --- When ---
-		err := openWith(nil, "file:///tmp/modmap/map.html")
+		err := openWith(nil, "file:///tmp/modmap/diagram.html")
 
 		// --- Then ---
 		assert.ErrorIs(t, ErrNoBrowser, err)

@@ -48,13 +48,13 @@ type config struct {
 	// option. When set, it is the only source of directories and globs.
 	conf string
 
-	// Names of the configuration file maps to draw, as columns from left
-	// to right. An empty list draws every map the file declares. It stays
-	// empty with the "--plan" option, as the plan spans every map.
+	// Names of the configuration file groups to draw, as columns from left
+	// to right. An empty list draws every group the file declares. It stays
+	// empty with the "--plan" option, as the plan spans every group.
 	names []string
 
 	// Module paths of the changed modules whose update plan is printed
-	// instead of drawing a map, in the order given. Set by the repeatable
+	// instead of drawing a diagram, in the order given. Set by the repeatable
 	// "--plan" option.
 	plan []string
 
@@ -62,8 +62,8 @@ type config struct {
 	// requirement on a planned module is. Set by the "--lag" option.
 	lag bool
 
-	// Print the modules every map keeps instead of drawing a map. Set by
-	// the "--modules" option.
+	// Print the modules every group keeps instead of drawing a diagram. Set
+	// by the "--modules" option.
 	modules bool
 
 	// Open the image in a browser instead of writing it to a file. Set
@@ -77,7 +77,7 @@ type config struct {
 	// Show the command usage. Set by the "--help" option.
 	showHelp bool
 
-	// Opens the written map in a browser. It is nil outside the tests,
+	// Opens the written diagram in a browser. It is nil outside the tests,
 	// which replace it to keep a browser from being launched.
 	opener func(url string) error
 
@@ -182,7 +182,7 @@ func (cfg *config) parseConf(wd string) error {
 	cfg.conf = abs(wd, cfg.conf)
 	cfg.names = cfg.fs.Args()
 	if len(cfg.plan) > 0 && len(cfg.names) > 0 {
-		return errPlanMap
+		return errPlanGroup
 	}
 	if cfg.modules && len(cfg.names) > 0 {
 		return errModulesOnly

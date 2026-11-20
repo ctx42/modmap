@@ -8,8 +8,8 @@
 <title>{{.Title}}</title>
 <style>
 html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#121212;}
-#map{position:absolute;top:0;left:0;transform-origin:0 0;will-change:transform;}
-#map svg{display:block;}
+#diagram{position:absolute;top:0;left:0;transform-origin:0 0;will-change:transform;}
+#diagram svg{display:block;}
 #hint{position:fixed;left:12px;bottom:10px;z-index:2;color:#b86200;
 opacity:0.55;font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;
 pointer-events:none;user-select:none;}
@@ -17,12 +17,12 @@ pointer-events:none;user-select:none;}
 </style>
 </head>
 <body>
-<div id="map">{{.Map}}</div>
+<div id="diagram">{{.Diagram}}</div>
 <div id="hint">drag to pan &middot; scroll to zoom &middot; 0 to fit
 &middot; <a href="{{.Link}}" download>save the SVG</a></div>
 <script>
 (function () {
-	var box = document.getElementById('map');
+	var box = document.getElementById('diagram');
 	var svg = box.querySelector('svg');
 	var vbw = svg.viewBox.baseVal.width || svg.clientWidth;
 	var vbh = svg.viewBox.baseVal.height || svg.clientHeight;

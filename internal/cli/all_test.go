@@ -20,11 +20,11 @@ func writeMod(t tester.T, content, dir string, elems ...string) {
 	oskit.Create(t, content, dir, "go.mod")
 }
 
-// crossMaps writes the modules of two maps, "ctx42" holding
+// crossGroups writes the modules of two groups, "ctx42" holding
 // github.com/ctx42/testing and "work" holding github.com/customer/a, which
 // requires it, and the configuration declaring them. It returns the path of
 // the configuration, which writes "all.svg" beside it.
-func crossMaps(t tester.T) string {
+func crossGroups(t tester.T) string {
 	t.Helper()
 	src := t.TempDir()
 	writeMod(t, "module github.com/ctx42/testing\n", src, "ctx42", "testing")
@@ -46,15 +46,15 @@ func crossMaps(t tester.T) string {
 	)
 }
 
-// planMaps writes the modules of two maps and the configuration declaring
-// them. Map "ctx42" holds github.com/ctx42/testing, github.com/ctx42/a, which
+// planGroups writes the modules of two groups and the configuration declaring
+// them. Group "ctx42" holds github.com/ctx42/testing, github.com/ctx42/a, which
 // requires github.com/customer/b, github.com/ctx42/d, which requires
 // github.com/ctx42/testing, and github.com/ctx42/blog, which requires
-// github.com/ctx42/testing but which the map excludes. Map "work" holds
+// github.com/ctx42/testing but which the group excludes. Group "work" holds
 // github.com/customer/b, which requires github.com/ctx42/testing, and
 // github.com/customer/z, which requires nothing. It returns the path of the
 // configuration and the directory holding the modules.
-func planMaps(t tester.T) (string, string) {
+func planGroups(t tester.T) (string, string) {
 	t.Helper()
 	src := t.TempDir()
 	writeMod(t, "module github.com/ctx42/testing\n", src, "ctx42", "testing")
@@ -115,10 +115,10 @@ func proxyEnv(t tester.T, mods map[string]string) []string {
 	)
 }
 
-// wideMaps writes two maps holding 12 modules each, all on level zero, and
+// wideGroups writes two groups holding 12 modules each, all on level zero, and
 // the configuration declaring them. It returns the path of the
 // configuration, which writes "all.svg" beside it.
-func wideMaps(t tester.T) string {
+func wideGroups(t tester.T) string {
 	t.Helper()
 	src := t.TempDir()
 	for idx := range 12 {

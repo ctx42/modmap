@@ -1,40 +1,40 @@
 # modmap configuration file — documented example.
 #
-# Copy this file next to your project, edit the maps, and draw them with
+# Copy this file next to your project, edit the groups, and draw them with
 #
-#   modmap -c modmap.yaml             # every map declared below
-#   modmap -c modmap.yaml ctx42       # only the map named ctx42
+#   modmap -c modmap.yaml             # every group declared below
+#   modmap -c modmap.yaml ctx42       # only the group named ctx42
 #   modmap -c modmap.yaml work ctx42  # two of them, in the order given
 #
-# A run always writes one image, to the "out" file below. Every map it draws
-# is a column of that image, left to right in the order the maps are named,
-# or in the order they are declared here when none are named. A run drawing
-# fewer maps overwrites the same file. Naming a map which is not declared
-# here fails and lists the names that are.
+# A run always writes one image, to the "out" file below. Every group it draws
+# is a column of that image, left to right in the order the groups are named, or
+# in the order they are declared here when none are named. A run drawing fewer
+# groups overwrites the same file. Naming a group which is not declared here
+# fails and lists the names that are.
 #
-# The maps are not drawn apart: their directories are scanned together, a
-# module is kept when any of the maps keeps it, and the levels, the
+# The groups are not drawn apart: their directories are scanned together, a
+# module is kept when any of the groups keeps it, and the levels, the
 # highlighting, and the update order digits span the whole image. A module
-# of one map requiring a module of another is an edge like any other, and
-# every module is drawn once, in the first column whose map keeps it.
+# of one group requiring a module of another is an edge like any other, and
+# every module is drawn once, in the first column whose group keeps it.
 #
 # When this file is used it is the only source of directories, filters, and
 # the output path: the --include, --exclude, and -o options cannot be
 # combined with -c. The one-off form takes them instead and declares nothing:
 #
-#   modmap --include 'github.com/you/*' -o tmp/map.svg ~/src
+#   modmap --include 'github.com/you/*' -o tmp/diagram.svg ~/src
 #
 # The --web option is the exception, because it decides where the image goes
 # rather than what it holds. It opens the same image a run would write in a
 # browser instead:
 #
-#   modmap --web -c modmap.yaml            # every map
-#   modmap --web -c modmap.yaml ctx42 work # the named maps
+#   modmap --web -c modmap.yaml            # every group
+#   modmap --web -c modmap.yaml ctx42 work # the named groups
 #
 # The "out" key below is then ignored: the image goes to a page under the
 # system temporary directory, which the browser opens from disk and which
 # links the image beside it for saving it after all. There is no key for any
-# of this: it is a choice you make per run, not a property of a map.
+# of this: it is a choice you make per run, not a property of a group.
 #
 # Every relative path below is resolved against the directory holding this
 # file, never against the current working directory, so a run writes the
@@ -43,11 +43,11 @@
 
 # The SVG file the image is written to. Required, and an existing file is
 # overwritten. It is required even when you only ever use --web, which
-# ignores it. A map has no "out" key of its own.
+# ignores it. A group has no "out" key of its own.
 out: tmp/modules.svg
 
 groups:
-    # A map of one workspace, filtered to the modules you own. This is the
+    # A group of one workspace, filtered to the modules you own. This is the
     # shape you want almost always: the filter keeps the picture readable and
     # keeps the run cheap.
   - name: ctx42
@@ -56,28 +56,28 @@ groups:
     # is a module, nested ones included, but directories whose names start
     # with "." or "_", testdata and vendor directories, and module cache
     # entries (names holding "@") are never descended into. At least one
-    # directory is required, and a map may list several.
+    # directory is required, and a group may list several.
     dirs:
       - /home/you/src/ctx42
 
-    # Module path globs deciding which modules take part in the map. A module
+    # Module path globs deciding which modules take part in the group. A module
     # matching none of them is never fetched and never drawn, so the globs
-    # decide how much work a run does as much as what it shows. Leaving the
-    # list out draws the whole dependency closure, third-party modules
-    # included — see the "everything" map below for what that costs. The "*"
-    # wildcard does not cross a "/" separator, so "github.com/ctx42/*" covers
+    # decide how much work a run does as much as what it shows. Leaving the list
+    # out draws the whole dependency closure, third-party modules included — see
+    # the "everything" group below for what that costs. The "*" wildcard does
+    # not cross a "/" separator, so "github.com/ctx42/*" covers
     # github.com/ctx42/testing but not github.com/ctx42/x/y.
     include:
       - github.com/ctx42/*
 
-    # Module path globs removing modules from the map. A module matching both
-    # lists is removed: exclude wins. Optional; leave it out to keep
+    # Module path globs removing modules from the group. A module matching
+    # both lists is removed: exclude wins. Optional; leave it out to keep
     # everything the include globs matched.
     exclude:
       - github.com/ctx42/tst-*
 
-    # A map spanning more than one checkout directory. Modules found on disk
-    # are read from disk whatever version other modules ask for, so a map
+    # A group spanning more than one checkout directory. Modules found on disk
+    # are read from disk whatever version other modules ask for, so a group
     # like this shows the code you are actually working on. Drawn beside
     # ctx42, it keeps only the customer modules, and the ctx42 modules they
     # require are reached across the column divider.
@@ -88,16 +88,18 @@ groups:
     include:
       - github.com/customer/*
 
-    # A map with no filters: every module in the dependency closure, drawn.
+    # A group with no filters: every module in the dependency closure, drawn.
     # Expect it to be slow on the first run, because the go.mod file of every
     # module the closure reaches has to come from the module cache or, when
     # the cache misses, from the network. Expect it to be wide, too: modmap
     # asks before rendering a level holding more than 20 modules, and --yes
     # skips that question for unattended runs. A dependency cycle anywhere in
     # the closure is fatal and no file is written — real cycles do exist
-    # among third-party modules, so an unfiltered map may simply refuse.
-    # Drawn with other maps it pulls the whole closure into the image, so
+    # among third-party modules, so an unfiltered group may simply refuse.
+    # Drawn with other groups it pulls the whole closure into the image, so
     # name it alone: modmap -c modmap.yaml everything
   - name: everything
     dirs:
       - /home/you/src/ctx42
+
+

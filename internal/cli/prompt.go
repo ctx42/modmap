@@ -16,13 +16,13 @@ import (
 	"golang.org/x/term"
 )
 
-// wideLevel is the number of boxes on a level above which the map is too wide
-// to be useful and the confirmation is asked for.
+// wideLevel is the number of boxes on a level above which the diagram is too
+// wide to be useful and the confirmation is asked for.
 const wideLevel = 20
 
-// confirm reports whether the map should be rendered. A map whose widest
-// level holds no more than [wideLevel] boxes is always rendered. A wider one
-// is announced on stderr and confirmed by the user, unless yes is set or
+// confirm reports whether the diagram should be rendered. A diagram whose
+// widest level holds no more than [wideLevel] boxes is always rendered. A wider
+// one is announced on stderr and confirmed by the user, unless yes is set or
 // there is nobody to ask, in which case it is rendered as well.
 func confirm(
 	ctx context.Context,

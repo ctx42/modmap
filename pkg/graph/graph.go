@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: (c) 2026 Rafal Zajac
 // SPDX-License-Identifier: MIT
 
-// Package graph turns discovered Go modules into the layered graph the map is
-// drawn from: every module sits one level above the modules it depends on.
+// Package graph turns discovered Go modules into the layered graph the diagram
+// is drawn from: every module sits one level above the modules it depends on.
 package graph
 
 import (
